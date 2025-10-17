@@ -204,9 +204,9 @@ def generate_reliant_best_customer_id(entries: List[Dict[str, Any]]) -> str:
             continue
     return f"RB-{str(last_id + 1).zfill(5)}"
 
-
 def generate_reliant_best_entry_id(entries: List[Dict[str, Any]]) -> str:
-    """Generate unique RELIANT BEST entry ID - Format: RBE-000001"""
+    if not entries:  # Check if the list is empty
+        return "RBE-000001"  # Start with a default if no entries exist
     last_id = 0
     for entry in entries:
         try:
