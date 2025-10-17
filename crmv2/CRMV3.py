@@ -1155,7 +1155,9 @@ def reliant_best_entry_page(user, db_local):
     # AUTO-FILLED SECTION
     staff_id = user.get("username")
     staff_name = user.get("username")
-    branch = user.get("assigned_branches", [""])[0] if user.get("assigned_branches") else "N/A"
+    branches = user.get("assigned_branches", [])
+    branch = branches[0] if branches else "N/A"
+
     (""
      "")
     col1, col2, col3 = st.columns(3)
@@ -1208,7 +1210,7 @@ def reliant_best_entry_page(user, db_local):
                     "customer_id_pl": pl_customer_id,  # Save the user-entered PL Customer ID
                     "staff_id": user.get("username"),
                     "staff_name": user.get("full_name", user.get("username")),
-                    "branch": user.get("assigned_branches", [""])[0],
+                    "branch": (user.get("assigned_branches", [None]) or ["N/A"])[0] or "N/A",
                     "gold_loan_number": gold_loan_number,
                     "gold_name": gold_name,
                     "gold_gross_weight": gold_gross_weight,
