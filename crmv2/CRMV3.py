@@ -1223,8 +1223,10 @@ def reliant_best_entry_page(user, db_local):
                 }
                 db_local["reliant_best_entries"].append(new_entry)
                 save_data(db_local)
-                st.success("Entry saved successfully!")
-                st.rerun()
+                st.success("✅ RELIANT BEST Entry saved successfully!")
+                st.balloons()
+                st.stop()
+
 # ===========================
 # STEP 8: CREATE RELIANT BEST MAIN PAGE FUNCTION
 # ===========================
