@@ -2867,9 +2867,8 @@ def user_management_page(user, db_local):
                             time.sleep(1)
                             st.rerun()
 
-
 # ====================
-# CREATE USER PAGE - FIXED (Product Assignment Only for Admin)
+# CREATE USER PAGE - FIXED (Added AGM Investment Option)
 # ====================
 def create_user_page(user, db_local):
     """User creation page for authorized roles"""
@@ -2884,6 +2883,7 @@ def create_user_page(user, db_local):
 
     st.markdown(f'<h2 class="burgundy-header">👥 Create New User</h2>', unsafe_allow_html=True)
 
+    # ✅ Role options (no duplicate AGM)
     if role == "admin":
         role_options = ["AGM", "Area Manager", "Branch Manager", "Branch Staff"]
     elif role == "AGM":
@@ -2905,13 +2905,17 @@ def create_user_page(user, db_local):
     with col2:
         password = st.text_input("Password", type="password")
 
-        # ✅ FIXED: Department assignment logic
-        if role in ["AGM", "area_manager", "branch_manager"]:
-            # Non-admin users inherit creator's department
+        # ✅ Department logic: Admin can choose Investment directly
+        if role == "admin":
+            dept = st.selectbox(
+                "Select Department",
+                ["Sales", "Investment", "MFI", "Recovery", "Legal", "Insurance"],
+                key="dept_select"
+            )
+        elif role in ["AGM", "area_manager", "branch_manager"]:
             dept = user.get("department", "Sales")
             st.text_input("Department", value=dept, disabled=True)
         else:
-            # Only admin can select department
             dept = st.selectbox("Select Department", ["Sales", "MFI", "Recovery", "Legal", "Insurance"],
                                 key="dept_select")
 
@@ -2921,7 +2925,6 @@ def create_user_page(user, db_local):
         if role == "area_manager" and selected_role == "Branch Manager":
             my_branches = user.get("assigned_branches", [])
             if my_branches:
-                st.markdown('<div style="margin:0.5rem 0;"></div>', unsafe_allow_html=True)
                 st.info(f"📍 Your Assigned Branches: {', '.join(my_branches)}")
                 branch = st.selectbox("Select Branch for New Branch Manager", my_branches, key="branch_select")
                 branch_list = [branch]
@@ -2932,7 +2935,6 @@ def create_user_page(user, db_local):
         elif role == "branch_manager" and selected_role == "Branch Staff":
             my_branches = user.get("assigned_branches", [])
             if my_branches:
-                st.markdown('<div style="margin:0.5rem 0;"></div>', unsafe_allow_html=True)
                 st.info(f"📍 Your Assigned Branches: {', '.join(my_branches)}")
                 branch = st.selectbox("Select Branch for New Staff Member", my_branches, key="branch_staff_select")
                 branch_list = [branch]
@@ -2946,9 +2948,8 @@ def create_user_page(user, db_local):
 
     product_list = []
 
-    # ✅ FIXED: Product Assignment - ONLY FOR ADMIN + SALES DEPARTMENT
+    # ✅ Product assignment - Admin + Sales only
     if role == "admin" and dept == "Sales":
-        st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
         st.markdown("### 📦 Product Assignment (Admin Only - Sales Department)")
         st.info("💡 Assign specific products this user can submit in customer leads")
 
@@ -2962,12 +2963,10 @@ def create_user_page(user, db_local):
             product_list = [p.strip() for p in products_input.split(",") if p.strip()]
             st.success(f"✅ Assigned Products: {', '.join(product_list)}")
 
-    # For non-admin creating Sales users, inherit creator's products
     elif role != "admin" and dept == "Sales":
         creator_products = user.get("assigned_products", [])
         if creator_products:
             product_list = creator_products
-            st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
             st.info(f"📦 Products (inherited from your account): {', '.join(product_list)}")
         else:
             st.warning(" ")
@@ -2983,22 +2982,27 @@ def create_user_page(user, db_local):
             st.error("❌ Password must be at least 6 characters.")
             return
 
-        # ✅ FIXED: Only admin needs to assign products for Sales users
+        # Product requirement only for Sales department
         if role == "admin" and dept == "Sales" and not product_list:
             st.error("❌ Products are required for Sales department users.")
             return
 
-        role_mapping = {
-            "AGM": "AGM",
-            "Area Manager": "area_manager",
-            "Branch Manager": "branch_manager",
-            "Branch Staff": "branch_staff"
-        }
+        # ✅ Smart AGM Investment detection
+        if selected_role == "AGM" and dept == "Investment":
+            role_save = "AGM"
+        else:
+            role_mapping = {
+                "AGM": "AGM",
+                "Area Manager": "area_manager",
+                "Branch Manager": "branch_manager",
+                "Branch Staff": "branch_staff"
+            }
+            role_save = role_mapping[selected_role]
 
         db_local["users"][username] = {
             "username": username,
             "password": hash_password(password),
-            "role": role_mapping[selected_role],
+            "role": role_save,
             "department": dept,
             "assigned_branches": branch_list,
             "assigned_products": product_list if dept == "Sales" else [],
@@ -3012,7 +3016,6 @@ def create_user_page(user, db_local):
             st.success(f"✅ {selected_role} '{username}' created successfully{branch_text}{product_text}!")
             time.sleep(1)
             st.rerun()
-
 
 # ====================
 # REPORTS PAGE - WITH ADVANCED DOWNLOAD FILTERS
