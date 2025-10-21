@@ -289,33 +289,33 @@ def export_insurance_to_excel(entries: List[Dict], filename: str = "insurance_da
 # ===========================
 # STEP 2: ADD RELIANT BEST EXPORT FUNCTION
 # ===========================
-# PASTE THIS CODE AFTER export_insurance_to_excel() FUNCTION
 def export_reliant_best_to_excel(entries: List[Dict]) -> BytesIO:
-    """Export RELIANT BEST entries to Excel with GOLD and PL in ONE row"""
+    """Export RELIANT BEST entries to Excel with GOLD and PL in ONE row."""
     export_data = []
+
     for entry in entries:
-        # Create single row with all GOLD and PL data
         row_data = {
-            "Entry ID": entry.get("entry_id"),
+            "Entry ID": entry.get("entry_id", ""),
             "Customer ID(GL)": entry.get("customer_id_gl", ""),
-            "Date": entry.get("timestamp", "").split(" ")[0],
-            "Staff ID": entry.get("staff_id"),
-            "Staff Name": entry.get("staff_name"),
-            "Branch": entry.get("branch"),
+            "Date": entry.get("timestamp", "").split(" ")[0] if entry.get("timestamp") else "",
+            "Staff ID": entry.get("staff_id", ""),
+            "Staff Name": entry.get("staff_name", ""),
+            "Branch": entry.get("branch", ""),
             # GOLD Section
             "Section": "GOLD & PL",
             "GL Loan Number": entry.get("gold_loan_number", ""),
             "GL Name": entry.get("gold_name", ""),
-            "Gross Weight (grams)": entry.get("gold_gross_weight", ""),
-            "Net Weight (grams)": entry.get("gold_net_weight", ""),
-            "Gold Amount": entry.get("gold_amount", ""),
+            "Gross Weight (grams)": entry.get("gold_gross_weight", 0),
+            "Net Weight (grams)": entry.get("gold_net_weight", 0),
+            "Gold Amount": entry.get("gold_amount", 0),
             # PL Section
             "Customer ID(PL)": entry.get("customer_id_pl", ""),
             "PL Loan Number": entry.get("pl_loan_number", ""),
             "PL Name": entry.get("pl_name", ""),
-            "PL Amount": entry.get("pl_amount", "")
+            "PL Amount": entry.get("pl_amount", 0),
         }
         export_data.append(row_data)
+
     df = pd.DataFrame(export_data)
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
