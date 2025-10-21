@@ -4313,7 +4313,7 @@ def fin_close_page(user, db_local):
         narration = st.text_area("📝 Narration *", key="narration_input")
 
         submitted = st.form_submit_button(
-            "✅ Close", use_container_width=True, type="primary"
+            "✅ Save", use_container_width=True, type="primary"
         )
 
         if submitted:
@@ -4651,4 +4651,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
