@@ -75,10 +75,13 @@ def load_data() -> Dict[str, Any]:
         "leads": [],
         "customer_leads": [],
         "insurance_entries": [],
+        "reliant_best_entries": [],
         "dashboard": {
             "text": "Welcome to CRM System. Please login to continue.",
             "image_path": None
-        }
+        },
+        "credits_fin_entries": [],
+        "bids": [],
     }
 
     if os.path.exists(DATA_FILE):
@@ -99,6 +102,9 @@ def load_data() -> Dict[str, Any]:
 
         data.setdefault("customer_leads", [])
         data.setdefault("insurance_entries", [])
+        data.setdefault("reliant_best_entries", [])
+        data.setdefault("credits_fin_entries", [])
+        data.setdefault("bids", [])
         data.setdefault("dashboard", default["dashboard"])
 
         # Ensure submitted_by field exists
@@ -185,7 +191,81 @@ def generate_insurance_customer_id(entries: List[Dict[str, Any]]) -> str:
         except ValueError:
             continue
     return f"INSC-{str(last_id + 1).zfill(5)}"
+# ===========================
+# STEP 1: ADD RELIANT BEST ID GENERATORS
+# ===========================
+# PASTE THIS CODE AFTER generate_insurance_customer_id() FUNCTION
 
+def generate_reliant_best_customer_id(entries: List[Dict[str, Any]]) -> str:
+    """Generate unique RELIANT BEST customer ID - Format: RB-00001"""
+    last_id = 0
+    for entry in entries:
+        try:
+            cid = int(str(entry.get("customer_id", "")).replace("RB-", ""))
+            if cid > last_id:
+                last_id = cid
+        except ValueError:
+            continue
+    return f"RB-{str(last_id + 1).zfill(5)}"
+
+def generate_reliant_best_entry_id(entries: List[Dict[str, Any]]) -> str:
+    if not entries:  # Check if the list is empty
+        return "RBE-000001"  # Start with a default if no entries exist
+    last_id = 0
+    for entry in entries:
+        try:
+            eid = int(str(entry.get("entry_id", "")).replace("RBE-", ""))
+            if eid > last_id:
+                last_id = eid
+        except ValueError:
+            continue
+    return f"RBE-{str(last_id + 1).zfill(6)}"
+def generate_gl_customer_id(entries: List[Dict[str, Any]]) -> str:
+    """Generate unique GOLD (GL) customer ID - Format: GL-00001"""
+    last_id = 0
+    for entry in entries:
+        try:
+            cid = int(str(entry.get("customer_id_gl", "")).replace("GL-", ""))
+            if cid > last_id:
+                last_id = cid
+        except ValueError:
+            continue
+    return f"GL-{str(last_id + 1).zfill(5)}"
+def generate_pl_customer_id(entries: List[Dict[str, Any]]) -> str:
+    """Generate unique PL customer ID - Format: PL-00001"""
+    last_id = 0
+    for entry in entries:
+        try:
+            cid = int(str(entry.get("customer_id_pl", "")).replace("PL-", ""))
+            if cid > last_id:
+                last_id = cid
+        except ValueError:
+            continue
+    return f"PL-{str(last_id + 1).zfill(5)}"
+
+def generate_credits_fin_entry_id(entries: List[Dict[str, Any]]) -> str:
+    """Generate unique Credits FIN entry ID - Format: CF-00001"""
+    last_id = 0
+    for entry in entries:
+        try:
+            cid = int(str(entry.get("entry_id", "")).replace("CF-", ""))
+            if cid > last_id:
+                last_id = cid
+        except ValueError:
+            continue
+    return f"CF-{str(last_id + 1).zfill(5)}"
+
+def generate_bid_id(entries: List[Dict[str, Any]]) -> str:
+    """Generate unique Bid ID - Format: BID-00001"""
+    last_id = 0
+    for entry in entries:
+        try:
+            bid = int(str(entry.get("bid_id", "")).replace("BID-", ""))
+            if bid > last_id:
+                last_id = bid
+        except ValueError:
+            continue
+    return f"BID-{str(last_id + 1).zfill(5)}"
 
 def export_to_excel(leads: List[Dict], filename: str = "crm_data.xlsx") -> BytesIO:
     """Export leads to Excel"""
@@ -232,6 +312,42 @@ def export_insurance_to_excel(entries: List[Dict], filename: str = "insurance_da
     output.seek(0)
     return output
 
+# ===========================
+# STEP 2: ADD RELIANT BEST EXPORT FUNCTION
+# ===========================
+# PASTE THIS CODE AFTER export_insurance_to_excel() FUNCTION
+def export_reliant_best_to_excel(entries: List[Dict]) -> BytesIO:
+    """Export RELIANT BEST entries to Excel with GOLD and PL in ONE row"""
+    export_data = []
+    for entry in entries:
+        # Create single row with all GOLD and PL data
+        row_data = {
+            "Entry ID": entry.get("entry_id"),
+            "Customer ID(GL)": entry.get("customer_id_gl", ""),
+            "Date": entry.get("timestamp", "").split(" ")[0],
+            "Staff ID": entry.get("staff_id"),
+            "Staff Name": entry.get("staff_name"),
+            "Branch": entry.get("branch"),
+            # GOLD Section
+            "Section": "GOLD & PL",
+            "GL Loan Number": entry.get("gold_loan_number", ""),
+            "GL Name": entry.get("gold_name", ""),
+            "Gross Weight (grams)": entry.get("gold_gross_weight", ""),
+            "Net Weight (grams)": entry.get("gold_net_weight", ""),
+            "Gold Amount": entry.get("gold_amount", ""),
+            # PL Section
+            "Customer ID(PL)": entry.get("customer_id_pl", ""),
+            "PL Loan Number": entry.get("pl_loan_number", ""),
+            "PL Name": entry.get("pl_name", ""),
+            "PL Amount": entry.get("pl_amount", "")
+        }
+        export_data.append(row_data)
+    df = pd.DataFrame(export_data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Reliant Best')
+    output.seek(0)
+    return output
 
 def get_image_base64(image_path: str) -> str:
     """Convert image to base64 for display"""
@@ -240,7 +356,6 @@ def get_image_base64(image_path: str) -> str:
             return base64.b64encode(img_file.read()).decode()
     except:
         return ""
-
 
 def filter_leads_by_role(leads: List[Dict], user: Dict) -> List[Dict]:
     """Filter leads based on user role for dashboard"""
@@ -269,46 +384,68 @@ def filter_leads_by_role(leads: List[Dict], user: Dict) -> List[Dict]:
         return []
 
 
-# ===========================
-# STEP 1: UPDATE filter_insurance_by_role() - FIXED
-# ===========================
 def filter_insurance_by_role(entries: List[Dict], user: Dict, db: Dict) -> List[Dict]:
-    """Filter insurance entries based on user role - INSURANCE AGM SEPARATION"""
+    """Filter insurance entries based on user role"""
     role = user.get("role")
     username = user.get("username")
-    department = user.get("department", "")
 
     if role == "admin":
-        # Admin sees everything
         return entries
-
     elif role == "branch_staff":
-        # Staff only sees their own entries
         return [e for e in entries if e.get("staff_id") == username]
-
     elif role == "branch_manager":
-        # BM sees entries from their assigned branches
         assigned_branches = user.get("assigned_branches", [])
         return [e for e in entries if e.get("branch") in assigned_branches]
-
     elif role == "area_manager":
-        # AM sees entries from their assigned branches
         assigned_branches = user.get("assigned_branches", [])
         return [e for e in entries if e.get("branch") in assigned_branches]
-
     elif role == "AGM":
-        # ✅ CRITICAL FIX: Department-based AGM filtering
-        if department == "Insurance":
-            # Insurance AGM sees ALL insurance entries from all branches
-            return entries
-        else:
-            # Sales/Other AGMs see NOTHING from insurance
-            return []
-
+        ams = [u for u, d in db["users"].items()
+               if d.get("created_by") == username and d.get("role") == "area_manager"]
+        branches = []
+        for am in ams:
+            branches.extend(db["users"][am].get("assigned_branches", []))
+        return [e for e in entries if e.get("branch") in branches]
     else:
         return []
 
 
+# ===========================
+# STEP 3: ADD RELIANT BEST FILTER FUNCTION
+# ===========================
+# PASTE THIS CODE AFTER filter_insurance_by_role() FUNCTION
+
+def filter_reliant_best_by_role(entries: List[Dict], user: Dict, db: Dict) -> List[Dict]:
+    """Filter RELIANT BEST entries based on user role - accessible to BM, AM, AGM, Admin"""
+    role = user.get("role")
+    username = user.get("username")
+
+    if role == "admin":
+        # Admin sees all entries
+        return entries
+
+    elif role == "branch_manager":
+        # Branch Manager sees entries from their assigned branches
+        assigned_branches = user.get("assigned_branches", [])
+        return [e for e in entries if e.get("branch") in assigned_branches]
+
+    elif role == "area_manager":
+        # Area Manager sees entries from their assigned branches
+        assigned_branches = user.get("assigned_branches", [])
+        return [e for e in entries if e.get("branch") in assigned_branches]
+
+    elif role == "AGM":
+        # AGM sees all entries under their assigned area managers' branches
+        ams = [u for u, d in db["users"].items()
+               if d.get("created_by") == username and d.get("role") == "area_manager"]
+        branches = []
+        for am in ams:
+            branches.extend(db["users"][am].get("assigned_branches", []))
+        return [e for e in entries if e.get("branch") in branches]
+
+    else:
+        # Branch Staff and others have no access
+        return []
 # ====================
 # INITIALIZE DATABASE
 # ====================
@@ -357,12 +494,21 @@ if "show_followup" not in st.session_state:
     st.session_state.show_followup = False
 if "delete_confirm_lead" not in st.session_state:
     st.session_state.delete_confirm_lead = None
+if "reliant_best_page" not in st.session_state:
+    st.session_state.reliant_best_page = "main"
+if "show_reliant_best_entries" not in st.session_state:
+    st.session_state.show_reliant_best_entries = False
+if "credits_fin_page" not in st.session_state:
+    st.session_state.credits_fin_page = "main"
+if "manage_credits_fin_page" not in st.session_state:
+    st.session_state.manage_credits_fin_page = "main"
 
 
-# ====================
-# CUSTOM CSS STYLING
+## ====================
+# CUSTOM CSS STYLING - FIXED
 # ====================
 def apply_custom_css():
+    """Apply custom CSS styling - Only once per session"""
     st.markdown(f'''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -742,12 +888,41 @@ def apply_custom_css():
         font-weight: 700;
         display: inline-block;
     }}
+
+    .reliant-best-gold {{
+        background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        border-left: 5px solid #b45309;
+    }}
+
+    .reliant-best-pl {{
+        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border-left: 5px solid #1e3a8a;
+    }}
+
+    .gold-section-title {{
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }}
+
+    .pl-section-title {{
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }}
     </style>
     ''', unsafe_allow_html=True)
 
 
+# Apply CSS only once at module initialization
 apply_custom_css()
-
 
 # ====================
 # GPS COMPONENT
@@ -994,6 +1169,327 @@ def render_gps_component():
 
     return components.html(gps_html, height=250, scrolling=False)
 
+# ===========================
+# STEP 7: CREATE RELIANT BEST ENTRY PAGE FUNCTION
+# ===========================
+# PASTE THIS ENTIRE FUNCTION BEFORE login_page():
+
+def reliant_best_entry_page(user, db_local):
+    """RELIANT BEST entry form with GOLD and PL portions - Branch Manager & Above Only"""
+    st.markdown(f'<h2 class="burgundy-header">💰 RELIANT BEST Entry</h2>', unsafe_allow_html=True)
+    if st.button("← Back"):
+        st.session_state.reliant_best_page = "main"
+        st.rerun()
+    st.markdown('<div style="margin:1.5rem 0;"></div>', unsafe_allow_html=True)
+    # AUTO-FILLED SECTION
+    staff_id = user.get("username")
+    staff_name = user.get("username")
+    branches = user.get("assigned_branches", [])
+    branch = branches[0] if branches else "N/A"
+
+    (""
+     "")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.text_input("👤 Staff ID", value=staff_id, disabled=True, key="rb_staff_id")
+    with col2:
+        st.text_input("👤 Staff Name", value=staff_name, disabled=True, key="rb_staff_name")
+    # Fix for Staff Name (use user.get("full_name") if available, otherwise keep as is)
+    staff_name = user.get("full_name", user.get("username"))  # Update this line if you have a full_name field
+
+    with col3:
+        st.text_input("🏢 Branch", value=branch, disabled=True, key="rb_branch")  # Add this if you want to show Branch
+
+    st.markdown('<div style="margin:1.5rem 0;"></div>', unsafe_allow_html=True)  # Spacer for better layout
+
+    with st.form(key="reliant_best_form"):
+        st.markdown("### GOLD Section")
+        gl_customer_id = st.number_input("Customer ID (GL) *", min_value=1, step=1)  # New field for GL Customer ID
+        gold_loan_number = st.text_input("GL Loan Number *")
+        gold_name = st.text_input("GL Name *")
+        gold_gross_weight = st.number_input("Gross Weight (grams) *", min_value=0.0)
+        gold_net_weight = st.number_input("Net Weight (grams) *", min_value=0.0)
+        gold_amount = st.number_input("Gold Amount *", min_value=0.0)
+
+        st.markdown("### PL Section")
+        pl_customer_id = st.number_input("Customer ID (PL) *", min_value=1, step=1)  # New field for PL Customer ID
+        pl_loan_number = st.text_input("PL Loan Number *")
+        pl_name = st.text_input("PL Name *")
+        pl_amount = st.number_input("PL Amount *", min_value=0.0)
+
+        submitted = st.form_submit_button("Submit Entry")
+
+        if submitted:
+            errors = []
+            if gl_customer_id == 0:  # Check if GL Customer ID is provided
+                errors.append("GL Customer ID is required.")
+            if pl_customer_id == 0:  # Check if PL Customer ID is provided
+                errors.append("PL Customer ID is required.")
+            if not gold_loan_number or not gold_name or gold_gross_weight <= 0:
+                errors.append("All GOLD fields are required.")
+            # Add more checks as needed
+
+            if errors:
+                for error in errors:
+                    st.error(error)
+            else:
+                new_entry = {
+                    "entry_id": generate_reliant_best_entry_id(db_local.get("reliant_best_entries", [])),
+                    "customer_id_gl": gl_customer_id,  # Save the user-entered GL Customer ID
+                    "customer_id_pl": pl_customer_id,  # Save the user-entered PL Customer ID
+                    "staff_id": user.get("username"),
+                    "staff_name": user.get("full_name", user.get("username")),
+                    "branch": (user.get("assigned_branches", [None]) or ["N/A"])[0] or "N/A",
+                    "gold_loan_number": gold_loan_number,
+                    "gold_name": gold_name,
+                    "gold_gross_weight": gold_gross_weight,
+                    "gold_net_weight": gold_net_weight,
+                    "gold_amount": gold_amount,
+                    "pl_loan_number": pl_loan_number,
+                    "pl_name": pl_name,
+                    "pl_amount": pl_amount,
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                db_local["reliant_best_entries"].append(new_entry)
+                save_data(db_local)
+                st.success("✅ RELIANT BEST Entry saved successfully!")
+                st.balloons()
+                st.stop()
+
+# ===========================
+# STEP 8: CREATE RELIANT BEST MAIN PAGE FUNCTION
+# ===========================
+# PASTE THIS FUNCTION AFTER reliant_best_entry_page():
+
+def reliant_best_main(user):
+    """Main RELIANT BEST page for navigation"""
+    st.markdown(f'<h2 class="burgundy-header">💰 RELIANT BEST Portal</h2>', unsafe_allow_html=True)
+
+    st.markdown(f'''
+    <div class="clean-card">
+        <h3>Welcome, {user.get("username")}!</h3>
+        <p>Select an action below to manage RELIANT BEST entries or view reports:</p>
+    </div>
+    ''', unsafe_allow_html=True)
+
+    st.markdown('<div style="margin:2rem 0;"></div>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("➕ Create New Entry", use_container_width=True, type="primary"):
+            st.session_state.reliant_best_page = "entry"
+            st.rerun()
+
+    with col2:
+        if st.button("📊 View & Manage", use_container_width=True, type="primary"):
+            st.session_state.reliant_best_page = "management"
+            st.rerun()
+
+# ===========================
+# STEP 9: CREATE RELIANT BEST MANAGEMENT PAGE FUNCTION
+# ===========================
+# ===========================
+# STEP 9: CREATE RELIANT BEST MANAGEMENT PAGE FUNCTION
+# ===========================
+# PASTE THIS FUNCTION AFTER reliant_best_main():
+def reliant_best_management_page(user, db_local):
+    """RELIANT BEST management and view page"""
+    st.markdown(f'<h2 class="burgundy-header">💰 RELIANT BEST Management</h2>', unsafe_allow_html=True)
+
+    role = user.get("role")
+    username = user.get("username")
+
+    # ACCESS CONTROL
+    allowed_roles = ["branch_manager", "area_manager", "AGM", "admin"]
+    if role not in allowed_roles:
+        st.error("❌ Access Denied: Only Branch Managers, Area Managers, AGM, and Admin can access this page.")
+        if st.button("← Go Back"):
+            st.session_state.page = "reports"
+            st.rerun()
+        return
+
+    if st.button("← Back"):
+        st.session_state.reliant_best_page = "main"
+        st.rerun()
+
+    st.markdown('<div style="margin:1.5rem 0;"></div>', unsafe_allow_html=True)
+
+    # RELOAD DATA
+    db_fresh = load_data()
+    all_entries = db_fresh.get("reliant_best_entries", [])
+    entries = filter_reliant_best_by_role(all_entries, user, db_fresh)
+
+    if not entries:
+        st.info("No RELIANT BEST entries found.")
+        return
+
+    # METRICS
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        total = len(entries)
+        st.markdown(f'<div class="metric-card"><div class="metric-value">{total}</div><div class="metric-label">Total Entries</div></div>', unsafe_allow_html=True)
+    with col2:
+        total_gold_amount = sum([e.get("gold_amount", 0) for e in entries])
+        st.markdown(f'<div class="metric-card"><div class="metric-value">₹{total_gold_amount/100000:.1f}L</div><div class="metric-label">Gold Value</div></div>', unsafe_allow_html=True)
+    with col3:
+        total_pl_amount = sum([e.get("pl_amount", 0) for e in entries])
+        st.markdown(f'<div class="metric-card"><div class="metric-value">₹{total_pl_amount/100000:.1f}L</div><div class="metric-label">PL Value</div></div>', unsafe_allow_html=True)
+    with col4:
+        combined_total = total_gold_amount + total_pl_amount
+        st.markdown(f'<div class="metric-card"><div class="metric-value">₹{combined_total/100000:.1f}L</div><div class="metric-label">Total Value</div></div>', unsafe_allow_html=True)
+
+    st.markdown('<div style="margin:2rem 0;"></div>', unsafe_allow_html=True)
+
+    # FILTERS
+    st.markdown("### 🔍 Filters")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        branches = sorted(list(set([e.get("branch") for e in entries])))
+        branch_filter = st.selectbox("Branch", ["All"] + branches, key="rb_branch_filter")
+    with col2:
+        if role in ["area_manager", "AGM", "admin"]:
+            staff = sorted(list(set([e.get("staff_id") for e in entries if e.get("staff_id")])))
+            staff_filter = st.selectbox("Staff", ["All"] + staff, key="rb_staff_filter")
+        else:
+            staff_filter = "All"
+    with col3:
+        from_date = st.date_input("From Date", value=date.today() - timedelta(days=30), key="rb_from_date")
+    with col4:
+        to_date = st.date_input("To Date", value=date.today(), key="rb_to_date")
+
+    st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
+
+    # Apply filters
+    filtered = entries
+    if branch_filter != "All":
+        filtered = [e for e in filtered if e.get("branch") == branch_filter]
+    if staff_filter != "All":
+        filtered = [e for e in filtered if e.get("staff_id") == staff_filter]
+    filtered = [e for e in filtered if from_date <= datetime.strptime(e.get("timestamp", "2000-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S").date() <= to_date]
+
+    st.markdown(f"**Found {len(filtered)} records**")
+
+    # Download button
+    if filtered:
+        excel_data = export_reliant_best_to_excel(filtered)
+        st.download_button(
+            label=f"📥 Download Excel Report ({len(filtered)} records)",
+            data=excel_data,
+            file_name=f"reliant_best_{role}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary",
+            use_container_width=True
+        )
+
+    st.markdown('<div style="margin:2rem 0;"></div>', unsafe_allow_html=True)
+
+    # Display entries
+    st.markdown("### 📋 RELIANT BEST Entries")
+    for entry in filtered:
+        entry_id = entry.get("entry_id")
+        customer_id_gl = entry.get("customer_id_gl") or '-'
+        customer_id_pl = entry.get("customer_id_pl") or '-'
+        gold_amt = entry.get("gold_amount", 0)
+        pl_amt = entry.get("pl_amount", 0)
+        total_amt = gold_amt + pl_amt
+
+        with st.expander(f"{entry_id} | GL: {customer_id_gl} | PL: {customer_id_pl} | ₹{total_amt:,.0f}"):
+            col1, col2 = st.columns(2)
+
+            # GOLD Section
+            with col1:
+                st.markdown(f"""
+                <div class="reliant-best-gold" style="margin:0; padding:0.5rem; border:1px solid #b8860b; border-radius:6px;">
+                    <div class="gold-section-title" style="font-weight:bold; color:#b8860b; margin-bottom:0.5rem;">GOLD Section</div>
+                    <div style="font-size:0.95rem; line-height:1.6;">
+                        <strong>Customer ID (GL):</strong> {customer_id_gl}<br>
+                        <strong>Loan Number:</strong> {entry.get('gold_loan_number', '-')}<br>
+                        <strong>Applicant Name:</strong> {entry.get('gold_name', '-')}<br>
+                        <strong>Gross Weight:</strong> {entry.get('gold_gross_weight', 0)} grams<br>
+                        <strong>Net Weight:</strong> {entry.get('gold_net_weight', 0)} grams<br>
+                        <strong>Amount:</strong> ₹{gold_amt:,.2f}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # PL Section
+            with col2:
+                pl_name = entry.get('pl_name') or '-'
+                pl_loan_number = entry.get('pl_loan_number') or '-'
+                st.markdown(f"""
+                <div class="reliant-best-pl" style="margin:0; padding:0.5rem; border:1px solid #0ea5e9; border-radius:6px;">
+                    <div class="pl-section-title" style="font-weight:bold; color:#0c63e4; margin-bottom:0.5rem;">PL (Portion) Section</div>
+                    <div style="font-size:0.95rem; line-height:1.6;">
+                        <strong>Customer ID (PL):</strong> {customer_id_pl}<br>
+                        <strong>Loan Number:</strong> {pl_loan_number}<br>
+                        <strong>Applicant Name:</strong> {pl_name}<br>
+                        <strong>Amount:</strong> ₹{pl_amt:,.2f}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
+
+            # Staff / Branch / Date Info
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.markdown(f"**Staff ID:** {entry.get('staff_id', '-')}")
+            with col2:
+                st.markdown(f"**Staff Name:** {entry.get('staff_name', '-')}")
+            with col3:
+                st.markdown(f"**Branch:** {entry.get('branch', '-')}")
+            with col4:
+                st.markdown(f"**Date:** {entry.get('timestamp', '').split(' ')[0]}")
+
+            st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
+
+            # Combined Total
+            st.markdown(f"""
+            <div style="background:#f0f9ff; border:2px solid #0ea5e9; border-radius:8px; padding:1rem;">
+                <strong style="color:#0c63e4; font-size:1.1rem;">Combined Total: ₹{total_amt:,.2f}</strong>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # --------- AGM Delete Option ---------
+            if role == "AGM":
+                if st.button(f"🗑️ Delete Entry", key=f"delete_{entry_id}", use_container_width=True):
+                    try:
+                        db_fresh["reliant_best_entries"] = [
+                            e for e in db_fresh["reliant_best_entries"] if e.get("entry_id") != entry_id
+                        ]
+                        save_data(db_fresh)
+                        st.success("✅ Entry deleted successfully!")
+                        st.rerun()  # <-- Updated
+                    except Exception as e:
+                        st.error(f"❌ Failed to delete entry: {e}")
+
+
+def filter_credits_fin_by_role(entries: List[Dict], user: Dict) -> List[Dict]:
+    """Filter Credits FIN entries by role"""
+    role = user.get("role")
+    username = user.get("username")
+    if role == "admin":
+        return entries
+    elif role == "branch_manager":
+        assigned_branches = user.get("assigned_branches", [])
+        return [e for e in entries if e.get("branch") in assigned_branches]
+    elif role == "AGM":
+        return entries  # AGM sees all for management
+    return []
+
+def filter_bids_by_role(entries: List[Dict], user: Dict) -> List[Dict]:
+    """Filter Bids by role"""
+    role = user.get("role")
+    username = user.get("username")
+    if role == "admin":
+        return entries
+    elif role == "branch_manager":
+        return [e for e in entries if e.get("bidder") == username]
+    elif role == "AGM":
+        return entries  # AGM sees all for approval
+    return []
+
 
 # ====================
 # LOGIN PAGE
@@ -1061,11 +1557,11 @@ def login_page():
             st.image(img_path, use_container_width=True)
 
 
-# ===========================
-# STEP 3: UPDATE INSURANCE APPLICATION PAGE - Timeline Text
-# ===========================
+# ====================
+# INSURANCE APPLICATION PAGE - FULLY CORRECTED
+# ====================
 def insurance_application_page(user, db_local):
-    """Insurance application form - UPDATED TIMELINE TEXT"""
+    """Insurance application form for branch staff"""
     st.markdown(f'<h2 class="burgundy-header">🏥 Insurance Application</h2>', unsafe_allow_html=True)
 
     if st.button("← Back to Manage Customer"):
@@ -1074,6 +1570,7 @@ def insurance_application_page(user, db_local):
 
     st.markdown('<div style="margin:1.5rem 0;"></div>', unsafe_allow_html=True)
 
+    # AUTO-FILLED SECTION
     staff_id = user.get("username")
     staff_name = user.get("username")
     branch = user.get("assigned_branches", [""])[0] if user.get("assigned_branches") else "N/A"
@@ -1092,36 +1589,78 @@ def insurance_application_page(user, db_local):
 
     st.markdown('<div style="margin:2rem 0;"></div>', unsafe_allow_html=True)
 
+    # APPLICATION FORM
     st.markdown("### 📝 Applicant Details")
 
     with st.form(key="insurance_application_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
 
         with col1:
-            applicant_name = st.text_input("👤 Applicant Name *", placeholder="Enter full name", key="applicant_name")
-            age = st.number_input("🎂 Age *", min_value=18, max_value=100, value=30, key="age")
-            phone = st.text_input("📞 Phone Number *", placeholder="10 digit number", max_chars=10, key="phone")
+            applicant_name = st.text_input(
+                "👤 Applicant Name *",
+                placeholder="Enter full name",
+                key="applicant_name"
+            )
+
+            age = st.number_input(
+                "🎂 Age *",
+                min_value=18,
+                max_value=100,
+                value=30,
+                key="age"
+            )
+
+            phone = st.text_input(
+                "📞 Phone Number *",
+                placeholder="10 digit number",
+                max_chars=10,
+                key="phone"
+            )
 
         with col2:
-            address = st.text_area("📍 Address *", placeholder="Enter complete address", height=100, key="address")
-            aadhar = st.text_input("🆔 Aadhar Number *", placeholder="12 digit number", max_chars=12, key="aadhar")
+            address = st.text_area(
+                "📍 Address *",
+                placeholder="Enter complete address",
+                height=100,
+                key="address"
+            )
+
+            aadhar = st.text_input(
+                "🆔 Aadhar Number *",
+                placeholder="12 digit number",
+                max_chars=12,
+                key="aadhar"
+            )
 
         st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
 
         col1, col2 = st.columns(2)
 
         with col1:
-            insurance_type = st.selectbox("🏥 Insurance Type *", ["Health", "Hospitalization", "Vehicle"],
-                                          key="insurance_type")
+            insurance_type = st.selectbox(
+                "🏥 Insurance Type *",
+                ["Health", "Hospitalization", "Vehicle"],
+                key="insurance_type"
+            )
 
         with col2:
-            premium = st.number_input("💰 Premium (₹) *", min_value=0.0, step=100.0, format="%.2f", key="premium")
+            premium = st.number_input(
+                "💰 Premium (₹) *",
+                min_value=0.0,
+                step=100.0,
+                format="%.2f",
+                key="premium"
+            )
 
         st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
 
         st.markdown("### 📄 Document Upload")
-        aadhar_file = st.file_uploader("Upload Aadhar Card *", type=["jpg", "jpeg", "png", "pdf"],
-                                       help="Maximum file size: 5MB", key="aadhar_upload")
+        aadhar_file = st.file_uploader(
+            "Upload Aadhar Card *",
+            type=["jpg", "jpeg", "png", "pdf"],
+            help="Maximum file size: 5MB",
+            key="aadhar_upload"
+        )
 
         st.markdown('<div style="margin:1.5rem 0;"></div>', unsafe_allow_html=True)
 
@@ -1129,18 +1668,25 @@ def insurance_application_page(user, db_local):
 
         if submitted:
             errors = []
+
             if not applicant_name:
                 errors.append("Applicant name is required")
+
             if not phone or not phone.isdigit() or len(phone) != 10:
                 errors.append("Phone number must be exactly 10 digits")
+
             if not aadhar or not aadhar.isdigit() or len(aadhar) != 12:
                 errors.append("Aadhar number must be exactly 12 digits")
+
             if not address:
                 errors.append("Address is required")
+
             if premium <= 0:
                 errors.append("Premium must be greater than 0")
+
             if not aadhar_file:
                 errors.append("Aadhar card document is required")
+
             if aadhar_file and aadhar_file.size > 5 * 1024 * 1024:
                 errors.append("File size must be less than 5MB")
 
@@ -1207,6 +1753,7 @@ def insurance_application_page(user, db_local):
         st.markdown('<div style="margin:1.5rem 0;"></div>', unsafe_allow_html=True)
         st.markdown("### 📋 My Insurance Applications")
 
+        # ✅ RELOAD DATA HERE FOR REAL-TIME UPDATES
         db_fresh = load_data()
         insurance_entries = db_fresh.get("insurance_entries", [])
         my_entries = [e for e in insurance_entries if e.get("staff_id") == staff_id]
@@ -1218,39 +1765,44 @@ def insurance_application_page(user, db_local):
         # Stats
         col1, col2, col3, col4 = st.columns(4)
         with col1:
+            total = len(my_entries)
             st.markdown(
-                f'<div class="metric-card"><div class="metric-value">{len(my_entries)}</div><div class="metric-label">Total</div></div>',
+                f'<div class="metric-card"><div class="metric-value">{total}</div><div class="metric-label">Total</div></div>',
                 unsafe_allow_html=True)
         with col2:
+            pending = len([e for e in my_entries if e.get("status") == "submitted"])
             st.markdown(
-                f'<div class="metric-card"><div class="metric-value">{len([e for e in my_entries if e.get("status") == "submitted"])}</div><div class="metric-label">Pending</div></div>',
+                f'<div class="metric-card"><div class="metric-value">{pending}</div><div class="metric-label">Pending</div></div>',
                 unsafe_allow_html=True)
         with col3:
+            approved = len([e for e in my_entries if e.get("status") == "approved_by_agm"])
             st.markdown(
-                f'<div class="metric-card"><div class="metric-value">{len([e for e in my_entries if e.get("status") == "approved_by_agm"])}</div><div class="metric-label">Approved</div></div>',
+                f'<div class="metric-card"><div class="metric-value">{approved}</div><div class="metric-label">Approved</div></div>',
                 unsafe_allow_html=True)
         with col4:
+            rejected = len([e for e in my_entries if e.get("status") == "rejected"])
             st.markdown(
-                f'<div class="metric-card"><div class="metric-value">{len([e for e in my_entries if e.get("status") == "rejected"])}</div><div class="metric-label">Rejected</div></div>',
+                f'<div class="metric-card"><div class="metric-value">{rejected}</div><div class="metric-label">Rejected</div></div>',
                 unsafe_allow_html=True)
 
         st.markdown('<div style="margin:2rem 0;"></div>', unsafe_allow_html=True)
 
+        # Display entries
         for entry in my_entries:
             status = entry.get("status", "submitted")
 
             if status == "submitted":
                 status_class = "status-submitted"
-                status_text = "⏳ Pending Branch Manager Approval"
+                status_text = "⏳ Pending Approval"
             elif status == "approved_by_branch_manager":
                 status_class = "status-approved-bm"
-                status_text = "⏳ Pending Area Manager Approval"
+                status_text = "✅ Branch Manager Approved"
             elif status == "approved_by_area_manager":
                 status_class = "status-approved-am"
-                status_text = "⏳ Pending Insurance AGM Approval"
+                status_text = "✅ Area Manager Approved"
             elif status == "approved_by_agm":
                 status_class = "status-approved-agm"
-                status_text = "✅ Fully Approved by Insurance AGM"
+                status_text = "✅ Fully Approved (AGM)"
             elif status == "rejected":
                 status_class = "status-rejected"
                 status_text = "❌ Rejected"
@@ -1283,29 +1835,23 @@ def insurance_application_page(user, db_local):
                 st.markdown("---")
                 st.markdown(f"**Address:** {entry.get('address')}")
 
-                # Aadhar document
                 if entry.get("aadhar_photo_path") and os.path.exists(entry.get("aadhar_photo_path")):
                     st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
                     st.markdown("**📄 Aadhar Card:**")
 
                     file_ext = entry.get("aadhar_photo_path").split(".")[-1].lower()
-
                     if file_ext in ["jpg", "jpeg", "png"]:
                         st.image(entry.get("aadhar_photo_path"), width=400)
-
-                    with open(entry.get("aadhar_photo_path"), "rb") as f:
-                        file_data = f.read()
-                        download_filename = f"Aadhar_{entry.get('customer_id')}_{entry.get('applicant_name').replace(' ', '_')}.{file_ext}"
-
-                        st.download_button(
-                            label="📥 Download Aadhar Card",
-                            data=file_data,
-                            file_name=download_filename,
-                            mime=f"image/{file_ext}" if file_ext in ["jpg", "jpeg", "png"] else "application/pdf",
-                            key=f"dl_aadhar_app_{entry.get('entry_id')}",
-                            use_container_width=True,
-                            type="secondary"
-                        )
+                    else:
+                        st.info("PDF document attached. Download to view.")
+                        with open(entry.get("aadhar_photo_path"), "rb") as f:
+                            st.download_button(
+                                label="📥 Download Aadhar",
+                                data=f,
+                                file_name=f"aadhar_{entry.get('entry_id')}.pdf",
+                                mime="application/pdf",
+                                key=f"dl_aadhar_app_{entry.get('entry_id')}"
+                            )
 
                 if status == "rejected" and entry.get("rejection_reason"):
                     st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
@@ -1314,7 +1860,7 @@ def insurance_application_page(user, db_local):
                 st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
                 st.markdown("**📊 Approval Timeline:**")
 
-                # Timeline
+                # Build clean timeline
                 if entry.get("approved_by_bm"):
                     st.markdown(f"""
                     <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid #16a34a; background: #f0fdf4; border-radius: 4px;">
@@ -1348,14 +1894,14 @@ def insurance_application_page(user, db_local):
                     if entry.get("approved_by_agm"):
                         st.markdown(f"""
                         <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid #16a34a; background: #f0fdf4; border-radius: 4px;">
-                            ✅ <strong>Insurance Department AGM:</strong> {entry.get("approved_by_agm")}<br>
+                            ✅ <strong>AGM:</strong> {entry.get("approved_by_agm")}<br>
                             <small style="color: #6b7280;">{entry.get("agm_approval_time", "")}</small>
                         </div>
                         """, unsafe_allow_html=True)
                     else:
                         st.markdown("""
                         <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid #d97706; background: #fffbeb; border-radius: 4px;">
-                            ⏳ <strong>Insurance Department AGM:</strong> Pending Final Approval
+                            ⏳ <strong>AGM:</strong> Pending
                         </div>
                         """, unsafe_allow_html=True)
 
@@ -1391,424 +1937,6 @@ def insurance_application_page(user, db_local):
                             else:
                                 st.session_state[delete_key] = True
                                 st.warning("⚠️ Click delete again to confirm")
-                                st.rerun()
-
-
-# ===========================
-# STEP 2: UPDATE INSURANCE MANAGEMENT PAGE - FIXED
-# ===========================
-def insurance_management_page(user, db_local):
-    """Insurance management page - INSURANCE AGM ONLY"""
-    st.markdown(f'<h2 class="burgundy-header">🏥 Insurance Management</h2>', unsafe_allow_html=True)
-
-    role = user.get("role")
-    username = user.get("username")
-    department = user.get("department", "")
-
-    # ✅ STRICT ACCESS CONTROL
-    allowed_roles = ["branch_manager", "area_manager", "admin"]
-
-    # AGM must be from Insurance department
-    if role == "AGM":
-        if department != "Insurance":
-            st.error("❌ Access Denied: Only Insurance Department AGM can access this page.")
-            st.info(
-                f"ℹ️ You are {department} Department AGM. Insurance applications are managed by Insurance Department AGM only.")
-            if st.button("← Go Back to Reports"):
-                st.session_state.page = "reports"
-                st.rerun()
-            return
-        else:
-            allowed_roles.append("AGM")  # Allow Insurance AGM
-
-    if role not in allowed_roles:
-        st.error("❌ Access Denied")
-        return
-
-    if st.button("← Back"):
-        st.session_state.page = "reports"
-        st.rerun()
-
-    st.markdown('<div style="margin:1.5rem 0;"></div>', unsafe_allow_html=True)
-
-    # Display user department clearly
-    if role == "AGM":
-        st.markdown(f'''
-        <div class="clean-card">
-            <h4>👤 Logged in as: {username} | {role} | {department} Department</h4>
-            <p>You have access to all insurance applications for final approval.</p>
-        </div>
-        ''', unsafe_allow_html=True)
-        st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
-
-    # ✅ RELOAD DATA
-    db_fresh = load_data()
-    all_entries = db_fresh.get("insurance_entries", [])
-    entries = filter_insurance_by_role(all_entries, user, db_fresh)
-
-    if not entries:
-        st.info("No insurance applications found.")
-        return
-
-    # Stats
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        total = len(entries)
-        st.markdown(
-            f'<div class="metric-card"><div class="metric-value">{total}</div><div class="metric-label">Total Applications</div></div>',
-            unsafe_allow_html=True)
-
-    with col2:
-        # Pending count based on role
-        if role == "branch_manager":
-            pending = len([e for e in entries if e.get("status") == "submitted"])
-            label = "Pending (You)"
-        elif role == "area_manager":
-            pending = len([e for e in entries if e.get("status") == "approved_by_branch_manager"])
-            label = "Pending (You)"
-        elif role == "AGM" and department == "Insurance":
-            pending = len([e for e in entries if e.get("status") == "approved_by_area_manager"])
-            label = "Pending (You)"
-        else:
-            pending = 0
-            label = "Pending"
-
-        st.markdown(
-            f'<div class="metric-card"><div class="metric-value">{pending}</div><div class="metric-label">{label}</div></div>',
-            unsafe_allow_html=True)
-
-    with col3:
-        approved = len([e for e in entries if e.get("status") == "approved_by_agm"])
-        st.markdown(
-            f'<div class="metric-card"><div class="metric-value">{approved}</div><div class="metric-label">Fully Approved</div></div>',
-            unsafe_allow_html=True)
-
-    with col4:
-        rejected = len([e for e in entries if e.get("status") == "rejected"])
-        st.markdown(
-            f'<div class="metric-card"><div class="metric-value">{rejected}</div><div class="metric-label">Rejected</div></div>',
-            unsafe_allow_html=True)
-
-    st.markdown('<div style="margin:2rem 0;"></div>', unsafe_allow_html=True)
-
-    # Filters
-    st.markdown("### 🔍 Filters")
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        branches = sorted(list(set([e.get("branch") for e in entries])))
-        branch_filter = st.selectbox("Branch", ["All"] + branches, key="ins_branch_filter")
-
-    with col2:
-        types = ["All", "Health", "Hospitalization", "Vehicle"]
-        type_filter = st.selectbox("Insurance Type", types, key="ins_type_filter")
-
-    with col3:
-        status_options = ["All", "Pending", "Approved", "Rejected"]
-        status_filter = st.selectbox("Status", status_options, key="ins_status_filter")
-
-    with col4:
-        # Staff filter for managers
-        if role in ["branch_manager", "area_manager", "AGM", "admin"]:
-            all_staff = sorted(list(set([e.get("staff_id") for e in entries if e.get("staff_id")])))
-            staff_filter = st.selectbox("Staff", ["All"] + all_staff, key="ins_staff_filter")
-        else:
-            staff_filter = "All"
-
-    # Apply filters
-    filtered = entries
-
-    if branch_filter != "All":
-        filtered = [e for e in filtered if e.get("branch") == branch_filter]
-
-    if type_filter != "All":
-        filtered = [e for e in filtered if e.get("insurance_type") == type_filter]
-
-    if staff_filter != "All":
-        filtered = [e for e in filtered if e.get("staff_id") == staff_filter]
-
-    # Status filtering
-    if status_filter == "Pending":
-        if role == "branch_manager":
-            filtered = [e for e in filtered if e.get("status") == "submitted"]
-        elif role == "area_manager":
-            filtered = [e for e in filtered if e.get("status") == "approved_by_branch_manager"]
-        elif role == "AGM" and department == "Insurance":
-            filtered = [e for e in filtered if e.get("status") == "approved_by_area_manager"]
-    elif status_filter == "Approved":
-        filtered = [e for e in filtered if e.get("status") == "approved_by_agm"]
-    elif status_filter == "Rejected":
-        filtered = [e for e in filtered if e.get("status") == "rejected"]
-
-    st.markdown(f"**Found {len(filtered)} applications**")
-
-    # Download
-    if filtered:
-        excel_data = export_insurance_to_excel(filtered)
-        st.download_button(
-            label="📥 Download Excel Report",
-            data=excel_data,
-            file_name=f"insurance_{department}_{role}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    st.markdown('<div style="margin:2rem 0;"></div>', unsafe_allow_html=True)
-
-    # Display entries
-    for entry in filtered:
-        entry_id = entry.get("entry_id")
-        status = entry.get("status", "submitted")
-
-        # ✅ APPROVAL PERMISSION CHECK
-        can_approve = False
-        can_reject = False
-
-        if role == "branch_manager" and status == "submitted":
-            can_approve = True
-            can_reject = True
-        elif role == "area_manager" and status == "approved_by_branch_manager":
-            can_approve = True
-            can_reject = True
-        elif role == "AGM" and department == "Insurance" and status == "approved_by_area_manager":
-            can_approve = True
-            can_reject = True
-
-        # Status display
-        if status == "submitted":
-            status_class = "status-submitted"
-            status_display = "⏳ Awaiting Branch Manager Approval"
-        elif status == "approved_by_branch_manager":
-            status_class = "status-approved-bm"
-            status_display = "⏳ Awaiting Area Manager Approval"
-        elif status == "approved_by_area_manager":
-            status_class = "status-approved-am"
-            status_display = "⏳ Awaiting Insurance AGM Approval"
-        elif status == "approved_by_agm":
-            status_class = "status-approved-agm"
-            status_display = "✅ Fully Approved by Insurance AGM"
-        elif status == "rejected":
-            status_class = "status-rejected"
-            status_display = "❌ Rejected"
-        else:
-            status_class = "status-submitted"
-            status_display = "⏳ Unknown Status"
-
-        with st.expander(
-                f"{entry_id} | {entry.get('customer_id')} | {entry.get('applicant_name')} | {entry.get('insurance_type')}"):
-            st.markdown(f'<div class="insurance-status-badge {status_class}">{status_display}</div>',
-                        unsafe_allow_html=True)
-
-            st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.markdown(f"**Staff ID:** {entry.get('staff_id')}")
-                st.markdown(f"**Staff Name:** {entry.get('staff_name')}")
-                st.markdown(f"**Branch:** {entry.get('branch')}")
-
-            with col2:
-                st.markdown(f"**Applicant:** {entry.get('applicant_name')}")
-                st.markdown(f"**Age:** {entry.get('age')}")
-                st.markdown(f"**Phone:** {entry.get('phone_number')}")
-
-            with col3:
-                st.markdown(f"**Aadhar:** {entry.get('aadhar_number')}")
-                st.markdown(f"**Type:** {entry.get('insurance_type')}")
-                st.markdown(f"**Premium:** ₹{entry.get('premium'):,.2f}")
-
-            st.markdown("---")
-            st.markdown(f"**Address:** {entry.get('address')}")
-
-            # Aadhar document
-            if entry.get("aadhar_photo_path") and os.path.exists(entry.get("aadhar_photo_path")):
-                st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
-                st.markdown("**📄 Aadhar Card Document:**")
-
-                file_ext = entry.get("aadhar_photo_path").split(".")[-1].lower()
-
-                if file_ext in ["jpg", "jpeg", "png"]:
-                    st.image(entry.get("aadhar_photo_path"), width=500)
-
-                with open(entry.get("aadhar_photo_path"), "rb") as f:
-                    file_data = f.read()
-                    download_filename = f"Aadhar_{entry.get('customer_id')}_{entry.get('applicant_name').replace(' ', '_')}.{file_ext}"
-
-                    st.download_button(
-                        label="📥 Download Aadhar Card",
-                        data=file_data,
-                        file_name=download_filename,
-                        mime=f"image/{file_ext}" if file_ext in ["jpg", "jpeg", "png"] else "application/pdf",
-                        key=f"download_aadhar_mgmt_{entry_id}",
-                        use_container_width=True,
-                        type="secondary"
-                    )
-
-            # Timeline
-            st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
-            st.markdown("**📊 Approval Timeline:**")
-
-            # Step 1: Branch Manager
-            if entry.get("approved_by_bm"):
-                st.markdown(f"""
-                <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid #16a34a; background: #f0fdf4; border-radius: 4px;">
-                    ✅ <strong>Branch Manager:</strong> {entry.get("approved_by_bm")}<br>
-                    <small style="color: #6b7280;">{entry.get("bm_approval_time", "")}</small>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid #d97706; background: #fffbeb; border-radius: 4px;">
-                    ⏳ <strong>Branch Manager:</strong> Pending
-                </div>
-                """, unsafe_allow_html=True)
-
-            # Step 2: Area Manager
-            if entry.get("approved_by_bm"):
-                if entry.get("approved_by_am"):
-                    st.markdown(f"""
-                    <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid #16a34a; background: #f0fdf4; border-radius: 4px;">
-                        ✅ <strong>Area Manager:</strong> {entry.get("approved_by_am")}<br>
-                        <small style="color: #6b7280;">{entry.get("am_approval_time", "")}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown("""
-                    <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid #d97706; background: #fffbeb; border-radius: 4px;">
-                        ⏳ <strong>Area Manager:</strong> Pending
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            # Step 3: Insurance AGM
-            if entry.get("approved_by_am"):
-                if entry.get("approved_by_agm"):
-                    st.markdown(f"""
-                    <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid #16a34a; background: #f0fdf4; border-radius: 4px;">
-                        ✅ <strong>Insurance Department AGM:</strong> {entry.get("approved_by_agm")}<br>
-                        <small style="color: #6b7280;">{entry.get("agm_approval_time", "")}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown("""
-                    <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 3px solid #d97706; background: #fffbeb; border-radius: 4px;">
-                        ⏳ <strong>Insurance Department AGM:</strong> Pending Final Approval
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            # Rejection reason
-            if status == "rejected" and entry.get("rejection_reason"):
-                st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
-                st.error(f"**Rejection Reason:** {entry.get('rejection_reason')}")
-
-            # Approval/Rejection actions
-            if can_approve:
-                st.markdown('<div style="margin:1.5rem 0;"></div>', unsafe_allow_html=True)
-
-                # Timer for BM and AM only (NOT for Insurance AGM)
-                if role in ["branch_manager", "area_manager"]:
-                    timer_key = f"{username}_{entry_id}"
-                    if timer_key not in st.session_state.insurance_open_times:
-                        st.session_state.insurance_open_times[timer_key] = time.time()
-
-                    elapsed = time.time() - st.session_state.insurance_open_times[timer_key]
-                    remaining = max(0, 10 - int(elapsed))
-
-                    if remaining > 0:
-                        st.markdown(
-                            f'<div class="timer-message">⏳ Please review the application carefully. Action buttons will be available in {remaining} seconds...</div>',
-                            unsafe_allow_html=True
-                        )
-                        time.sleep(1)
-                        st.rerun()
-
-                col_approve, col_reject = st.columns(2)
-
-                with col_approve:
-                    # Dynamic button label
-                    if role == "branch_manager":
-                        approve_label = "✅ Approve (Branch Manager)"
-                    elif role == "area_manager":
-                        approve_label = "✅ Approve (Area Manager)"
-                    elif role == "AGM" and department == "Insurance":
-                        approve_label = "✅ Final Approval (Insurance AGM)"
-                    else:
-                        approve_label = "✅ Approve"
-
-                    if st.button(approve_label, key=f"approve_{entry_id}", type="primary", use_container_width=True):
-                        for i, e in enumerate(db_fresh["insurance_entries"]):
-                            if e.get("entry_id") == entry_id:
-                                if role == "branch_manager":
-                                    db_fresh["insurance_entries"][i]["status"] = "approved_by_branch_manager"
-                                    db_fresh["insurance_entries"][i]["approved_by_bm"] = username
-                                    db_fresh["insurance_entries"][i]["bm_approval_time"] = datetime.now().strftime(
-                                        "%Y-%m-%d %H:%M:%S")
-
-                                elif role == "area_manager":
-                                    db_fresh["insurance_entries"][i]["status"] = "approved_by_area_manager"
-                                    db_fresh["insurance_entries"][i]["approved_by_am"] = username
-                                    db_fresh["insurance_entries"][i]["am_approval_time"] = datetime.now().strftime(
-                                        "%Y-%m-%d %H:%M:%S")
-
-                                elif role == "AGM" and department == "Insurance":
-                                    # ✅ Insurance AGM final approval
-                                    db_fresh["insurance_entries"][i]["status"] = "approved_by_agm"
-                                    db_fresh["insurance_entries"][i]["approved_by_agm"] = username
-                                    db_fresh["insurance_entries"][i][
-                                        "approved_by_agm_department"] = "Insurance"  # Track which AGM approved
-                                    db_fresh["insurance_entries"][i]["agm_approval_time"] = datetime.now().strftime(
-                                        "%Y-%m-%d %H:%M:%S")
-
-                                break
-
-                        if save_data(db_fresh):
-                            timer_key = f"{username}_{entry_id}"
-                            if timer_key in st.session_state.insurance_open_times:
-                                del st.session_state.insurance_open_times[timer_key]
-                            st.success("✅ Application approved successfully!")
-                            st.balloons()
-                            time.sleep(1)
-                            st.rerun()
-
-                with col_reject:
-                    if can_reject:
-                        reject_key = f"reject_reason_{entry_id}"
-                        show_reject_key = f"show_reject_{entry_id}"
-
-                        if st.session_state.get(show_reject_key, False):
-                            reason = st.text_area("Rejection Reason *", key=reject_key,
-                                                  placeholder="Enter detailed reason for rejection")
-
-                            col_confirm, col_cancel = st.columns(2)
-                            with col_confirm:
-                                if st.button("Confirm Reject", key=f"confirm_reject_{entry_id}", type="primary"):
-                                    if reason:
-                                        for i, e in enumerate(db_fresh["insurance_entries"]):
-                                            if e.get("entry_id") == entry_id:
-                                                db_fresh["insurance_entries"][i]["status"] = "rejected"
-                                                db_fresh["insurance_entries"][i]["rejection_reason"] = reason
-                                                db_fresh["insurance_entries"][i]["rejected_by"] = username
-                                                db_fresh["insurance_entries"][i][
-                                                    "rejection_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                                break
-
-                                        if save_data(db_fresh):
-                                            timer_key = f"{username}_{entry_id}"
-                                            if timer_key in st.session_state.insurance_open_times:
-                                                del st.session_state.insurance_open_times[timer_key]
-                                            st.session_state[show_reject_key] = False
-                                            st.error("Application rejected.")
-                                            time.sleep(1)
-                                            st.rerun()
-                                    else:
-                                        st.error("Rejection reason is required")
-
-                            with col_cancel:
-                                if st.button("Cancel", key=f"cancel_reject_{entry_id}"):
-                                    st.session_state[show_reject_key] = False
-                                    st.rerun()
-                        else:
-                            if st.button(f"❌ Reject", key=f"reject_{entry_id}", use_container_width=True):
-                                st.session_state[show_reject_key] = True
                                 st.rerun()
 
 
@@ -1879,7 +2007,7 @@ def insurance_management_page(user, db_local):
         branch_filter = st.selectbox("Branch", ["All"] + branches, key="ins_branch_filter")
 
     with col2:
-        types = ["All", "Health", "Hospi", "Vehicle"]
+        types = ["All", "Health", "Hospitalization", "Vehicle"]
         type_filter = st.selectbox("Insurance Type", types, key="ins_type_filter")
 
     with col3:
@@ -2986,6 +3114,21 @@ def reports_page(db_local):
 
     st.markdown('<div style="margin:2.5rem 0;"></div>', unsafe_allow_html=True)
 
+    # Credits FIN Dashboard
+    credits_entries = db_fresh.get("credits_fin_entries", [])
+    total_closing_amount = sum([e.get("amount", 0) for e in credits_entries])
+
+    st.markdown("### 💰 Credits FIN Dashboard")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(
+            f'<div class="metric-card"><div class="metric-value">₹{total_closing_amount / 100000:.1f}L</div><div class="metric-label">Total Closing Amount</div></div>',
+            unsafe_allow_html=True)
+    with col2:
+        st.markdown(
+            f'<div class="metric-card"><div class="metric-value">{len(credits_entries)}</div><div class="metric-label">Closed Accounts</div></div>',
+            unsafe_allow_html=True)
+
     # ===========================
     # SECTION 2: STAFF BREAKDOWN (Branch Manager & Above)
     # ===========================
@@ -3545,7 +3688,7 @@ def reports_page(db_local):
 
         with col2:
             # Insurance type filter
-            ins_type_filter = st.selectbox("Insurance Type", ["All", "Health", "Hospi", "Vehicle"],
+            ins_type_filter = st.selectbox("Insurance Type", ["All", "Health", "Hospitalization", "Vehicle"],
                                            key="ins_type")
 
         with col3:
@@ -3896,20 +4039,22 @@ def settings_page(user, db_local):
             st.rerun()
 
 
-# ===========================
-# STEP 4: UPDATE DASHBOARD SIDEBAR - Department-Based Menu
-# ===========================
+# ====================
+# MAIN DASHBOARD - COMPLETE FIXED VERSION
+# ====================
 def dashboard():
-    """Main dashboard with navigation - DEPARTMENT SEPARATION"""
+    """Main dashboard with navigation"""
     user = st.session_state.user
     db_local = load_data()
     role = user.get("role")
-    department = user.get("department", "")
 
+    # SIDEBAR NAVIGATION
     with st.sidebar:
         st.markdown(f'<h1>📊 Menu</h1>', unsafe_allow_html=True)
 
-        # Universal navigation
+        # ===========================
+        # UNIVERSAL NAVIGATION
+        # ===========================
         if st.button("📊 Reports", key="nav_reports", use_container_width=True):
             st.session_state.page = "reports"
             st.rerun()
@@ -3922,8 +4067,50 @@ def dashboard():
             st.session_state.page = "activities"
             st.rerun()
 
-        # User management (Admin and Managers)
+        st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
+
+        # ===========================
+        # BRANCH STAFF NAVIGATION
+        # ===========================
+        if role == "branch_staff":
+            st.markdown("### 📋 Branch Staff")
+            if st.button("📋 Manage Customer", key="nav_manage_customer", use_container_width=True):
+                st.session_state.page = "manage_customer"
+                st.session_state.manage_customer_page = "main"
+                st.rerun()
+
+        # ===========================
+        # MANAGER NAVIGATION (BM, AM, AGM)
+        # ===========================
+        if role in ["branch_manager", "area_manager", "AGM"]:
+            st.markdown("### 👨‍💼 Functions")
+
+            if st.button("🏥 Insurance Management", key="nav_insurance_mgmt", use_container_width=True):
+                st.session_state.page = "insurance_management"
+                st.rerun()
+
+            if st.button("💰 RELIANT BEST", key="nav_reliant_best", use_container_width=True):
+                st.session_state.page = "reliant_best"
+                st.session_state.reliant_best_page = "main"
+                st.rerun()
+            if st.button("💰 CREDITSFIN LOG", key="nav_credits_fin", use_container_width=True):
+                st.session_state.page = "credits_fin"
+                st.session_state.credits_fin_page = "main"
+                st.rerun()
+            if user.get("department") == "Investment" and user.get("role") == "AGM":
+                if st.button("💰 MANAGE CREDITS FIN", key="nav_manage_credits_fin", use_container_width=True):
+                    st.session_state.page = "manage_credits_fin"
+                    st.session_state.manage_credits_fin_page = "main"
+                    st.rerun()
+
+        # ===========================
+        # ADMIN & MANAGER USER MANAGEMENT
+        # ===========================
         if role in ["admin", "AGM", "area_manager", "branch_manager"]:
+            st.markdown("### 👥 User Management")
+
             if st.button("👥 Create User", key="nav_create", use_container_width=True):
                 st.session_state.page = "create_user"
                 st.rerun()
@@ -3932,40 +4119,24 @@ def dashboard():
                 st.session_state.page = "manage_users"
                 st.rerun()
 
-        # Branch Staff menu
-        if role == "branch_staff":
-            if st.button("📋 Manage Customer", key="nav_manage_customer", use_container_width=True):
-                st.session_state.page = "manage_customer"
-                st.session_state.manage_customer_page = "main"
-                st.rerun()
-
-        # ✅ CRITICAL FIX: Insurance Management Access Control
-        show_insurance_menu = False
-
+        # ===========================
+        # ADMIN ONLY FUNCTIONS
+        # ===========================
         if role == "admin":
-            # Admin can always access
-            show_insurance_menu = True
-        elif role in ["branch_manager", "area_manager"]:
-            # All BM and AM can access (they handle initial approvals)
-            show_insurance_menu = True
-        elif role == "AGM" and department == "Insurance":
-            # ONLY Insurance Department AGM can access
-            show_insurance_menu = True
+            st.markdown("### ⚙️ Administration")
 
-        if show_insurance_menu:
-            if st.button("🏥 Insurance Management", key="nav_insurance_mgmt", use_container_width=True):
-                st.session_state.page = "insurance_management"
-                st.rerun()
-
-        # Admin settings
-        if role == "admin":
             if st.button("⚙️ Settings", key="nav_settings", use_container_width=True):
                 st.session_state.page = "settings"
                 st.rerun()
 
-        # Logout
+        # ===========================
+        # LOGOUT BUTTON
+        # ===========================
         st.markdown('<div style="margin-top:3rem;"></div>', unsafe_allow_html=True)
-        if st.button("🚪 LOGOUT", key="logout_sidebar", use_container_width=True):
+        st.markdown("---")
+        st.markdown('<div style="margin:1rem 0;"></div>', unsafe_allow_html=True)
+
+        if st.button("🚪 LOGOUT", key="logout_sidebar", use_container_width=True, type="secondary"):
             st.session_state.logged_in = False
             st.session_state.user = None
             st.session_state.lead_open_times = {}
@@ -3974,38 +4145,47 @@ def dashboard():
             st.session_state.page = "reports"
             st.session_state.manage_customer_page = "main"
             st.session_state.insurance_page = "application"
+            st.session_state.reliant_best_page = "main"
             st.session_state.gps_data = None
             st.session_state.show_gps = False
             st.session_state.show_insurance_entries = False
             st.session_state.show_saved_leads = False
             st.session_state.show_followup = False
+            st.session_state.show_reliant_best_entries = False
             st.session_state.delete_confirm_lead = None
             st.rerun()
 
-    # User info header
+    # ===========================
+    # USER INFO HEADER
+    # ===========================
     st.markdown(f'''
         <div class="user-info-header">
             <span class="user-info">
-                👤 {user.get('username')} <span class="user-separator">|</span> 
-                🏢 {role.replace('_', ' ').title()} <span class="user-separator">|</span> 
-                📂 {department} Department
+                {user.get('username')} <span class="user-separator">|</span> {role.replace('_', ' ').title()}
             </span>
         </div>
     ''', unsafe_allow_html=True)
 
-    # Page routing
+    # ===========================
+    # PAGE ROUTING
+    # ===========================
     page = st.session_state.get("page", "reports")
 
     if page == "reports":
         reports_page(db_local)
+
     elif page == "inquiry":
         customer_inquiry_page(user, db_local)
+
     elif page == "activities":
         activities_page(user, db_local)
+
     elif page == "create_user":
         create_user_page(user, db_local)
+
     elif page == "manage_users":
         user_management_page(user, db_local)
+
     elif page == "manage_customer":
         manage_page = st.session_state.get("manage_customer_page", "main")
         if manage_page == "main":
@@ -4016,11 +4196,438 @@ def dashboard():
             lead_status_page(user, db_local)
         elif manage_page == "insurance_application":
             insurance_application_page(user, db_local)
+
     elif page == "insurance_management":
         insurance_management_page(user, db_local)
+
+    elif page == "reliant_best":
+        reliant_page = st.session_state.get("reliant_best_page", "main")
+        if reliant_page == "main":
+            reliant_best_main(user)
+        elif reliant_page == "entry":
+            reliant_best_entry_page(user, db_local)
+        elif reliant_page == "management":
+            reliant_best_management_page(user, db_local)
+
     elif page == "settings":
         settings_page(user, db_local)
 
+    elif page == "credits_fin":
+        credits_page = st.session_state.get("credits_fin_page", "main")
+        if credits_page == "main":
+            credits_fin_main(user)
+        elif credits_page == "fin_close":
+            fin_close_page(user, db_local)
+        elif credits_page == "place_bid":
+            place_bid_page(user, db_local)
+
+    elif page == "manage_credits_fin":
+        manage_page = st.session_state.get("manage_credits_fin_page", "main")
+        if manage_page == "main":
+            manage_credits_fin_main(user)
+        elif manage_page == "closed_accounts":
+            closed_accounts_page(user, db_local)
+        elif manage_page == "placed_bids":
+            placed_bids_page(user, db_local)
+
+    else:
+        # Default page if invalid
+        st.session_state.page = "reports"
+        st.rerun()
+
+
+def credits_fin_main(user):
+    """Main CREDITSFIN LOG page for Branch Managers"""
+    st.markdown(f'<h2 class="burgundy-header">💰 CREDITSFIN LOG</h2>', unsafe_allow_html=True)
+
+    st.markdown(f'''
+    <div class="clean-card">
+        <h3>Welcome, {user.get("username")}!</h3>
+        <p>Select an action below:</p>
+    </div>
+    ''', unsafe_allow_html=True)
+
+    st.markdown('<div style="margin:2rem 0;"></div>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("🔒 FIN CLOSE", use_container_width=True, type="primary"):
+            st.session_state.credits_fin_page = "fin_close"
+            st.rerun()
+
+    with col2:
+        if st.button("📝 PLACE BID", use_container_width=True, type="primary"):
+            st.session_state.credits_fin_page = "place_bid"
+            st.rerun()
+
+def fin_close_page(user, db_local):
+    """FIN CLOSE page"""
+    st.markdown(f'<h2 class="burgundy-header">🔒 FIN CLOSE</h2>', unsafe_allow_html=True)
+
+    if st.button("← Back"):
+        st.session_state.credits_fin_page = "main"
+        st.rerun()
+
+    # Constants
+    branches = user.get("assigned_branches", [])
+    branch = branches[0] if branches else "N/A"  # Safe access: if empty, default to "N/A"
+    department = user.get("department", "N/A")
+    user_name = user.get("username")
+
+    st.markdown("### 📋 Constants")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.text_input("🏢 Branch Name", value=branch, disabled=True)
+    with col2:
+        st.text_input("📁 Department", value=department, disabled=True)
+    with col3:
+        st.text_input("👤 User Name", value=user_name, disabled=True)
+
+    st.markdown('<div style="margin:1.5rem 0;"></div>', unsafe_allow_html=True)
+
+    with st.form(key="fin_close_form"):
+        name = st.text_input("👤 Name *", key="name_input")
+
+        customer_id = st.number_input(
+            "🆔 Customer ID *", min_value=1, step=1, key="customer_id_input"
+        )
+
+        scheme = st.number_input(
+            "🏷️ Scheme *",
+            min_value=1,
+            step=1,
+            help="Enter scheme number only",
+            key="scheme_input"
+        )
+
+        maturity = st.date_input("📅 Maturity *", key="maturity_input")
+
+        amount = st.number_input(
+            "💰 Amount *", min_value=0.0, step=0.01, key="amount_input"
+        )
+
+        narration = st.text_area("📝 Narration *", key="narration_input")
+
+        submitted = st.form_submit_button(
+            "✅ Close", use_container_width=True, type="primary"
+        )
+
+        if submitted:
+            st.success(f"✅ Entry for Customer ID {customer_id} closed successfully.")
+
+        if submitted:
+            if not all([name, customer_id, maturity, amount, narration, scheme]):
+                st.error("❌ All fields are required!")
+            else:
+                new_entry = {
+                    "entry_id": generate_credits_fin_entry_id(db_local.get("credits_fin_entries", [])),
+                    "branch": branch,
+                    "department": department,
+                    "user_name": user_name,
+                    "name": name,
+                    "customer_id": customer_id,
+                    "scheme": scheme,  # NEW: Save scheme number
+                    "maturity": str(maturity),
+                    "amount": amount,
+                    "narration": narration,
+                    "booked": False,  # Add this line
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                db_local["credits_fin_entries"].append(new_entry)
+                save_data(db_local)
+                st.success("✅ FIN Closed successfully!")
+                st.balloons()
+                st.stop()
+
+def place_bid_page(user, db_local):
+    """PLACE BID page - shows only unbooked FINs without approved bids"""
+    st.markdown(f'<h2 class="burgundy-header">📝 PLACE BID</h2>', unsafe_allow_html=True)
+
+    if st.button("← Back"):
+        st.session_state.credits_fin_page = "main"
+        st.rerun()
+
+    db_fresh = load_data()
+    all_entries = db_fresh.get("credits_fin_entries", [])
+    all_bids = db_fresh.get("bids", [])
+
+    if not all_entries:
+        st.info("No closed FINs available.")
+        return
+
+    # ✅ Filter out booked and approved entries
+    visible_entries = []
+    for entry in all_entries:
+        entry_id = entry.get("entry_id")
+
+        # Skip if booked
+        if entry.get("booked", False):
+            continue
+
+        # Skip if this entry has an approved bid
+        approved_bids = [b for b in all_bids if b.get("entry_id") == entry_id and b.get("status") == "APPROVED"]
+        if approved_bids:
+            continue
+
+        visible_entries.append(entry)
+
+    if not visible_entries:
+        st.info("✅ No slot available.")
+        return
+
+    # Display visible (eligible) entries
+    for entry in visible_entries:
+        with st.expander(f"{entry.get('entry_id')} | {entry.get('name')} | ₹{entry.get('amount'):,}"):
+            st.markdown(f"**Branch:** {entry.get('branch')}")
+            st.markdown(f"**Customer Name:** {entry.get('name')}")
+            st.markdown(f"**Scheme:** {entry.get('department')}")  # Assuming department = scheme
+            st.markdown(f"**Amount:** ₹{entry.get('amount'):,}")
+            st.markdown(f"**Maturity:** {entry.get('maturity')}")
+
+            if st.button("📝 Place Bid", key=f"bid_{entry.get('entry_id')}", use_container_width=True, type="primary"):
+                try:
+                    new_bid = {
+                        "bid_id": generate_bid_id(db_fresh.get("bids", [])),
+                        "entry_id": entry.get("entry_id"),
+                        "bidder": user.get("username"),
+                        "branch": entry.get("branch"),
+                        "amount": entry.get("amount"),
+                        "status": "PLACED",  # use uppercase for clarity
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    db_fresh["bids"].append(new_bid)
+                    save_data(db_fresh)
+                    st.success(f"✅ Bid placed successfully for {entry.get('entry_id')}!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Error placing bid: {e}")
+
+
+def manage_credits_fin_main(user):
+    """Main MANAGE CREDITS FIN page for AGM (Investment)"""
+    if user.get("department") != "Investment" or user.get("role") != "AGM":
+        st.error("❌ Access Denied")
+        return
+
+    st.markdown(f'<h2 class="burgundy-header">💰 MANAGE CREDITS FIN</h2>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("🔒 CLOSED ACCOUNTS", use_container_width=True, type="primary"):
+            st.session_state.manage_credits_fin_page = "closed_accounts"
+            st.rerun()
+
+    with col2:
+        if st.button("📝 PLACED BIDS", use_container_width=True, type="primary"):
+            st.session_state.manage_credits_fin_page = "placed_bids"
+            st.rerun()
+# --------------------------
+# Excel Export Function
+# --------------------------
+def export_credits_fin_to_excel(entries):
+    """Convert list of dicts (entries) to Excel and return as BytesIO"""
+    if not entries:
+        return None
+
+    df = pd.DataFrame(entries)
+
+    # Optional: reorder columns for clarity
+    columns_order = [
+        "entry_id", "name", "customer_id", "branch", "department",
+        "amount", "booked", "narration", "timestamp", "user_name", "maturity"
+    ]
+    df = df[[c for c in columns_order if c in df.columns]]
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Closed Accounts")
+    output.seek(0)
+    return output
+
+# --------------------------
+# CLOSED ACCOUNTS PAGE
+# --------------------------
+def closed_accounts_page(user, db_local):
+    """CLOSED ACCOUNTS page"""
+    st.markdown(f'<h2 class="burgundy-header">🔒 CLOSED ACCOUNTS</h2>', unsafe_allow_html=True)
+
+    if st.button("← Back"):
+        st.session_state.manage_credits_fin_page = "main"
+        st.rerun()
+
+    db_fresh = load_data()
+    entries = filter_credits_fin_by_role(db_fresh.get("credits_fin_entries", []), user)
+
+    # Filters
+    st.markdown("### 🔍 Filters")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        branch_options = ["All"] + list(set([e.get("branch") for e in entries]))
+        branch_filter = st.selectbox("Branch", branch_options, key="closed_branch_filter")
+
+    with col2:
+        scheme_options = ["All"] + list(set([e.get("department") for e in entries]))  # Scheme = Department
+        scheme_filter = st.selectbox("Scheme (Department)", scheme_options, key="closed_scheme_filter")
+
+    with col3:
+        status_options = ["All", "Booked", "Not Booked"]
+        status_filter = st.selectbox("Status", status_options, key="closed_status_filter")
+
+    # Apply filters
+    filtered_entries = entries
+    if branch_filter != "All":
+        filtered_entries = [e for e in filtered_entries if e.get("branch") == branch_filter]
+    if scheme_filter != "All":
+        filtered_entries = [e for e in filtered_entries if e.get("department") == scheme_filter]
+    if status_filter == "Booked":
+        filtered_entries = [e for e in filtered_entries if e.get("booked", False)]
+    elif status_filter == "Not Booked":
+        filtered_entries = [e for e in filtered_entries if not e.get("booked", False)]
+
+    # Download button (respects filters)
+    if filtered_entries:
+        excel_data = export_credits_fin_to_excel(filtered_entries)
+        st.download_button(
+            label="📥 Download Closed Accounts Excel",
+            data=excel_data,
+            file_name=f"closed_accounts_filtered_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
+    if not filtered_entries:
+        st.info("No closed accounts match the filters.")
+        return
+
+    for entry in filtered_entries:
+        booked_status = " (BOOKED)" if entry.get("booked", False) else ""
+
+        with st.expander(f"{entry.get('entry_id')} | {entry.get('name')} | ₹{entry.get('amount'):,}{booked_status}"):
+            st.markdown(f"**Branch:** {entry.get('branch')}")
+            st.markdown(f"**Department:** {entry.get('department')}")
+            st.markdown(f"**User Name:** {entry.get('user_name')}")
+            st.markdown(f"**Name:** {entry.get('name')}")
+            st.markdown(f"**Customer ID:** {entry.get('customer_id')}")
+            st.markdown(f"**Maturity:** {entry.get('maturity')}")
+            st.markdown(f"**Amount:** ₹{entry.get('amount'):,}")
+            st.markdown(f"**Narration:** {entry.get('narration')}")
+            st.markdown(f"**Timestamp:** {entry.get('timestamp', '').split(' ')[0]}")
+
+            if entry.get("booked"):
+                st.success("✅ This account is BOOKED.")
+
+            # AGM Investment: Manual BOOK & Delete Options
+            if user.get("role") == "AGM" and user.get("department") == "Investment":
+                delete_key = f"delete_confirm_{entry.get('entry_id')}"
+                st.markdown("---")
+                col_book, col_delete = st.columns([3, 1])
+
+                # Manual BOOK
+                with col_book:
+                    if entry.get("booked", False):
+                        st.success("✅ Already BOOKED")
+                    else:
+                        if st.button(f"🔒 BOOKED", key=f"manual_book_{entry.get('entry_id')}"):
+                            try:
+                                db_fresh = load_data()
+                                for e in db_fresh["credits_fin_entries"]:
+                                    if e.get("entry_id") == entry.get("entry_id"):
+                                        e["booked"] = True
+                                        break
+                                for bid in db_fresh.get("bids", []):
+                                    if bid.get("entry_id") == entry.get("entry_id"):
+                                        bid["status"] = "BOOKED"
+                                save_data(db_fresh)
+                                st.success(f"✅ Account {entry['entry_id']} marked as BOOKED!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Failed to update booking: {e}")
+
+                # Delete Entry
+                with col_delete:
+                    if st.button(f"🗑️ Delete Entry", key=f"delete_{entry.get('entry_id')}"):
+                        if st.session_state.get(delete_key, False):
+                            try:
+                                db_fresh = load_data()
+                                db_fresh["credits_fin_entries"] = [
+                                    e for e in db_fresh["credits_fin_entries"] if e.get("entry_id") != entry.get("entry_id")
+                                ]
+                                db_fresh["bids"] = [
+                                    b for b in db_fresh["bids"] if b.get("entry_id") != entry.get("entry_id")
+                                ]
+                                save_data(db_fresh)
+                                st.success(f"✅ Entry {entry.get('entry_id')} deleted successfully.")
+                                st.session_state[delete_key] = False
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Error during deletion: {e}")
+                        else:
+                            st.session_state[delete_key] = True
+                            st.warning(f"⚠️ Click delete again to confirm deletion of Entry {entry.get('entry_id')}.")
+                            st.rerun()
+
+def placed_bids_page(user, db_local):
+    """PLACED BIDS page with approval"""
+    st.markdown(f'<h2 class="burgundy-header">📝 PLACED BIDS</h2>', unsafe_allow_html=True)
+
+    if st.button("← Back"):
+        st.session_state.manage_credits_fin_page = "main"
+        st.rerun()
+
+    db_fresh = load_data()
+    bids = filter_bids_by_role(db_fresh.get("bids", []), user)
+
+    for bid in bids:
+        with st.expander(f"{bid.get('bid_id')} | {bid.get('bidder')} | ₹{bid.get('amount'):,}"):
+            # Display bid details
+            st.markdown(f"**Bidder:** {bid.get('bidder')}")
+            st.markdown(f"**Entry ID:** {bid.get('entry_id')}")
+            st.markdown(f"**Amount:** ₹{bid.get('amount'):,}")
+            st.markdown(f"**Status:** {bid.get('status', '').upper()}")
+
+            # Action buttons only for 'placed' bids
+            if bid.get("status") == "placed":
+                col_approve, col_reject = st.columns(2)
+
+                # ---------------- APPROVE BUTTON ----------------
+                with col_approve:
+                    if st.button("✅ Approve", key=f"approve_{bid.get('bid_id')}", type="primary"):
+                        db_fresh = load_data()  # Reload latest data
+
+                        # Find and approve the bid
+                        for b in db_fresh["bids"]:
+                            if b.get("bid_id") == bid.get("bid_id"):
+                                b["status"] = "approved"
+                                break
+
+                        # Mark related closing entry as BOOKED
+                        for e in db_fresh["credits_fin_entries"]:
+                            if e.get("entry_id") == bid.get("entry_id"):
+                                e["booked"] = True
+                                break
+
+                        save_data(db_fresh)
+                        st.success("✅ Bid approved! Account marked as BOOKED.")
+                        st.rerun()
+
+                # ---------------- REJECT BUTTON ----------------
+                with col_reject:
+                    if st.button("❌ Reject", key=f"reject_{bid.get('bid_id')}", type="secondary"):
+                        db_fresh = load_data()
+
+                        # Find and reject the bid
+                        for b in db_fresh["bids"]:
+                            if b.get("bid_id") == bid.get("bid_id"):
+                                b["status"] = "rejected"
+                                break
+
+                        save_data(db_fresh)
+                        st.success("❌ Bid rejected.")
+                        st.rerun()
 
 # ====================
 # MAIN ENTRY POINT
@@ -4029,9 +4636,10 @@ def main():
     """Main application entry point"""
     if not st.session_state.logged_in:
         login_page()
+
+
     else:
         dashboard()
-
 
 if __name__ == "__main__":
     main()
