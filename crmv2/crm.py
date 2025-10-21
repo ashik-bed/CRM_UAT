@@ -4592,6 +4592,10 @@ def placed_bids_page(user, db_local):
             st.markdown(f"**Amount:** ₹{bid.get('amount'):,}")
             st.markdown(f"**Status:** {bid.get('status', '').upper()}")
 
+            # ✅ NEW: Show branch name for all bids
+            if bid.get("branch"):
+                st.markdown(f"**Branch:** {bid.get('branch')}")
+
             # Action buttons only for 'placed' bids
             if bid.get("status") == "placed":
                 col_approve, col_reject = st.columns(2)
@@ -4632,6 +4636,7 @@ def placed_bids_page(user, db_local):
                         st.success("❌ Bid rejected.")
                         st.rerun()
 
+
 # ====================
 # MAIN ENTRY POINT
 # ====================
@@ -4646,3 +4651,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
