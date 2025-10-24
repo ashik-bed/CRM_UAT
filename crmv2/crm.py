@@ -4238,7 +4238,6 @@ def dashboard():
         st.session_state.page = "reports"
         st.rerun()
 
-
 def credits_fin_main(user):
     """Main CREDITSFIN LOG page for Branch Managers"""
     st.markdown(f'<h2 class="burgundy-header">💰 CREDITSFIN LOG</h2>', unsafe_allow_html=True)
@@ -4264,6 +4263,7 @@ def credits_fin_main(user):
             st.session_state.credits_fin_page = "place_bid"
             st.rerun()
 
+
 def fin_close_page(user, db_local):
     """FIN CLOSE page"""
     st.markdown(f'<h2 class="burgundy-header">🔒 FIN CLOSE</h2>', unsafe_allow_html=True)
@@ -4274,7 +4274,7 @@ def fin_close_page(user, db_local):
 
     # Constants
     branches = user.get("assigned_branches", [])
-    branch = branches[0] if branches else "N/A"  # Safe access: if empty, default to "N/A"
+    branch = branches[0] if branches else "N/A"
     department = user.get("department", "N/A")
     user_name = user.get("username")
 
@@ -4317,9 +4317,6 @@ def fin_close_page(user, db_local):
         )
 
         if submitted:
-            st.success(f"✅ Entry for Customer ID {customer_id} closed successfully.")
-
-        if submitted:
             if not all([name, customer_id, maturity, amount, narration, scheme]):
                 st.error("❌ All fields are required!")
             else:
@@ -4330,11 +4327,11 @@ def fin_close_page(user, db_local):
                     "user_name": user_name,
                     "name": name,
                     "customer_id": customer_id,
-                    "scheme": scheme,  # NEW: Save scheme number
+                    "scheme": scheme,  # ✅ Store scheme number
                     "maturity": str(maturity),
                     "amount": amount,
                     "narration": narration,
-                    "booked": False,  # Add this line
+                    "booked": False,
                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 db_local["credits_fin_entries"].append(new_entry)
@@ -4342,6 +4339,7 @@ def fin_close_page(user, db_local):
                 st.success("✅ FIN Closed successfully!")
                 st.balloons()
                 st.stop()
+
 
 def place_bid_page(user, db_local):
     """PLACE BID page - shows only unbooked FINs without approved bids"""
@@ -4359,17 +4357,14 @@ def place_bid_page(user, db_local):
         st.info("No closed FINs available.")
         return
 
-    # ✅ Filter out booked and approved entries
     visible_entries = []
     for entry in all_entries:
         entry_id = entry.get("entry_id")
 
-        # Skip if booked
         if entry.get("booked", False):
             continue
 
-        # Skip if this entry has an approved bid
-        approved_bids = [b for b in all_bids if b.get("entry_id") == entry_id and b.get("status") == "APPROVED"]
+        approved_bids = [b for b in all_bids if b.get("entry_id") == entry_id and b.get("status").upper() == "APPROVED"]
         if approved_bids:
             continue
 
@@ -4379,12 +4374,11 @@ def place_bid_page(user, db_local):
         st.info("✅ No slot available.")
         return
 
-    # Display visible (eligible) entries
     for entry in visible_entries:
         with st.expander(f"{entry.get('entry_id')} | {entry.get('name')} | ₹{entry.get('amount'):,}"):
             st.markdown(f"**Branch:** {entry.get('branch')}")
             st.markdown(f"**Customer Name:** {entry.get('name')}")
-            st.markdown(f"**Scheme:** {entry.get('department')}")  # Assuming department = scheme
+            st.markdown(f"**Scheme:** {entry.get('scheme')}")  # ✅ FIXED - display correct scheme
             st.markdown(f"**Amount:** ₹{entry.get('amount'):,}")
             st.markdown(f"**Maturity:** {entry.get('maturity')}")
 
@@ -4396,7 +4390,7 @@ def place_bid_page(user, db_local):
                         "bidder": user.get("username"),
                         "branch": entry.get("branch"),
                         "amount": entry.get("amount"),
-                        "status": "PLACED",  # use uppercase for clarity
+                        "status": "PLACED",
                         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     }
                     db_fresh["bids"].append(new_bid)
@@ -4426,9 +4420,8 @@ def manage_credits_fin_main(user):
         if st.button("📝 PLACED BIDS", use_container_width=True, type="primary"):
             st.session_state.manage_credits_fin_page = "placed_bids"
             st.rerun()
-# --------------------------
-# Excel Export Function
-# --------------------------
+
+
 def export_credits_fin_to_excel(entries):
     """Convert list of dicts (entries) to Excel and return as BytesIO"""
     if not entries:
@@ -4436,10 +4429,9 @@ def export_credits_fin_to_excel(entries):
 
     df = pd.DataFrame(entries)
 
-    # Optional: reorder columns for clarity
     columns_order = [
         "entry_id", "name", "customer_id", "branch", "department",
-        "amount", "booked", "narration", "timestamp", "user_name", "maturity"
+        "scheme", "amount", "booked", "narration", "timestamp", "user_name", "maturity"
     ]
     df = df[[c for c in columns_order if c in df.columns]]
 
@@ -4449,9 +4441,7 @@ def export_credits_fin_to_excel(entries):
     output.seek(0)
     return output
 
-# --------------------------
-# CLOSED ACCOUNTS PAGE
-# --------------------------
+
 def closed_accounts_page(user, db_local):
     """CLOSED ACCOUNTS page"""
     st.markdown(f'<h2 class="burgundy-header">🔒 CLOSED ACCOUNTS</h2>', unsafe_allow_html=True)
@@ -4463,7 +4453,6 @@ def closed_accounts_page(user, db_local):
     db_fresh = load_data()
     entries = filter_credits_fin_by_role(db_fresh.get("credits_fin_entries", []), user)
 
-    # Filters
     st.markdown("### 🔍 Filters")
     col1, col2, col3 = st.columns(3)
 
@@ -4472,25 +4461,23 @@ def closed_accounts_page(user, db_local):
         branch_filter = st.selectbox("Branch", branch_options, key="closed_branch_filter")
 
     with col2:
-        scheme_options = ["All"] + list(set([e.get("department") for e in entries]))  # Scheme = Department
-        scheme_filter = st.selectbox("Scheme (Department)", scheme_options, key="closed_scheme_filter")
+        scheme_options = ["All"] + list(set([e.get("scheme") for e in entries]))
+        scheme_filter = st.selectbox("Scheme (scheme)", scheme_options, key="closed_scheme_filter")
 
     with col3:
         status_options = ["All", "Booked", "Not Booked"]
         status_filter = st.selectbox("Status", status_options, key="closed_status_filter")
 
-    # Apply filters
     filtered_entries = entries
     if branch_filter != "All":
         filtered_entries = [e for e in filtered_entries if e.get("branch") == branch_filter]
     if scheme_filter != "All":
-        filtered_entries = [e for e in filtered_entries if e.get("department") == scheme_filter]
+        filtered_entries = [e for e in filtered_entries if e.get("scheme") == scheme_filter]
     if status_filter == "Booked":
         filtered_entries = [e for e in filtered_entries if e.get("booked", False)]
     elif status_filter == "Not Booked":
         filtered_entries = [e for e in filtered_entries if not e.get("booked", False)]
 
-    # Download button (respects filters)
     if filtered_entries:
         excel_data = export_credits_fin_to_excel(filtered_entries)
         st.download_button(
@@ -4512,6 +4499,7 @@ def closed_accounts_page(user, db_local):
             st.markdown(f"**Branch:** {entry.get('branch')}")
             st.markdown(f"**Department:** {entry.get('department')}")
             st.markdown(f"**User Name:** {entry.get('user_name')}")
+            st.markdown(f"**Scheme:** {entry.get('scheme')}")
             st.markdown(f"**Name:** {entry.get('name')}")
             st.markdown(f"**Customer ID:** {entry.get('customer_id')}")
             st.markdown(f"**Maturity:** {entry.get('maturity')}")
@@ -4522,13 +4510,11 @@ def closed_accounts_page(user, db_local):
             if entry.get("booked"):
                 st.success("✅ This account is BOOKED.")
 
-            # AGM Investment: Manual BOOK & Delete Options
             if user.get("role") == "AGM" and user.get("department") == "Investment":
                 delete_key = f"delete_confirm_{entry.get('entry_id')}"
                 st.markdown("---")
-                col_book, col_delete = st.columns([3, 1])
+                col_book, col_delete, col_reject = st.columns([2, 1, 1])
 
-                # Manual BOOK
                 with col_book:
                     if entry.get("booked", False):
                         st.success("✅ Already BOOKED")
@@ -4539,7 +4525,6 @@ def closed_accounts_page(user, db_local):
                                 for e in db_fresh["credits_fin_entries"]:
                                     if e.get("entry_id") == entry.get("entry_id"):
                                         e["booked"] = True
-                                        break
                                 for bid in db_fresh.get("bids", []):
                                     if bid.get("entry_id") == entry.get("entry_id"):
                                         bid["status"] = "BOOKED"
@@ -4549,7 +4534,24 @@ def closed_accounts_page(user, db_local):
                             except Exception as e:
                                 st.error(f"❌ Failed to update booking: {e}")
 
-                # Delete Entry
+                # ✅ NEW FEATURE: REJECT AFTER BOOKED (AGM)
+                with col_reject:
+                    if entry.get("booked", False):
+                        if st.button("❌ Reject After Booked", key=f"reject_booked_{entry.get('entry_id')}"):
+                            try:
+                                db_fresh = load_data()
+                                for e in db_fresh["credits_fin_entries"]:
+                                    if e.get("entry_id") == entry.get("entry_id"):
+                                        e["booked"] = False  # Unbook
+                                for bid in db_fresh.get("bids", []):
+                                    if bid.get("entry_id") == entry.get("entry_id"):
+                                        bid["status"] = "PLACED"  # Revert bid status
+                                save_data(db_fresh)
+                                st.warning(f"⚠️ Booking rejected for Entry {entry.get('entry_id')} — returned to placed bids.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Error rejecting booking: {e}")
+
                 with col_delete:
                     if st.button(f"🗑️ Delete Entry", key=f"delete_{entry.get('entry_id')}"):
                         if st.session_state.get(delete_key, False):
@@ -4573,6 +4575,7 @@ def closed_accounts_page(user, db_local):
                             st.warning(f"⚠️ Click delete again to confirm deletion of Entry {entry.get('entry_id')}.")
                             st.rerun()
 
+
 def placed_bids_page(user, db_local):
     """PLACED BIDS page with approval"""
     st.markdown(f'<h2 class="burgundy-header">📝 PLACED BIDS</h2>', unsafe_allow_html=True)
@@ -4586,56 +4589,38 @@ def placed_bids_page(user, db_local):
 
     for bid in bids:
         with st.expander(f"{bid.get('bid_id')} | {bid.get('bidder')} | ₹{bid.get('amount'):,}"):
-            # Display bid details
             st.markdown(f"**Bidder:** {bid.get('bidder')}")
             st.markdown(f"**Entry ID:** {bid.get('entry_id')}")
             st.markdown(f"**Amount:** ₹{bid.get('amount'):,}")
             st.markdown(f"**Status:** {bid.get('status', '').upper()}")
-
-            # ✅ NEW: Show branch name for all bids
             if bid.get("branch"):
                 st.markdown(f"**Branch:** {bid.get('branch')}")
 
-            # Action buttons only for 'placed' bids
-            if bid.get("status") == "placed":
+            if bid.get("status", "").upper() == "PLACED":
                 col_approve, col_reject = st.columns(2)
 
-                # ---------------- APPROVE BUTTON ----------------
                 with col_approve:
                     if st.button("✅ Approve", key=f"approve_{bid.get('bid_id')}", type="primary"):
-                        db_fresh = load_data()  # Reload latest data
-
-                        # Find and approve the bid
+                        db_fresh = load_data()
                         for b in db_fresh["bids"]:
                             if b.get("bid_id") == bid.get("bid_id"):
-                                b["status"] = "approved"
-                                break
-
-                        # Mark related closing entry as BOOKED
+                                b["status"] = "APPROVED"
                         for e in db_fresh["credits_fin_entries"]:
                             if e.get("entry_id") == bid.get("entry_id"):
                                 e["booked"] = True
-                                break
-
                         save_data(db_fresh)
                         st.success("✅ Bid approved! Account marked as BOOKED.")
                         st.rerun()
 
-                # ---------------- REJECT BUTTON ----------------
                 with col_reject:
                     if st.button("❌ Reject", key=f"reject_{bid.get('bid_id')}", type="secondary"):
                         db_fresh = load_data()
-
-                        # Find and reject the bid
                         for b in db_fresh["bids"]:
                             if b.get("bid_id") == bid.get("bid_id"):
-                                b["status"] = "rejected"
-                                break
-
+                                b["status"] = "REJECTED"
                         save_data(db_fresh)
                         st.success("❌ Bid rejected.")
                         st.rerun()
-
 
 # ====================
 # MAIN ENTRY POINT
@@ -4651,5 +4636,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
