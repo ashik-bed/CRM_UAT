@@ -4298,9 +4298,10 @@ def fin_close_page(user, db_local):
 
         scheme = st.number_input(
             "🏷️ Scheme *",
-            min_value=1,
-            step=1,
-            help="Enter scheme number only",
+            min_value=0.0,
+            step=0.01,
+            format="%.2f",
+            help="Enter scheme number",
             key="scheme_input"
         )
 
