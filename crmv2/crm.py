@@ -1544,9 +1544,9 @@ def login_page():
     with col2:
         st.markdown(f'''
         <div class="clean-card">
-            <h2 class="burgundy-header">Welcome to CRM System</h2>
+            <h2 class="burgundy-header">Welcome to Reliant Central</h2>
             <p style="color:{TEXT_SECONDARY}; line-height:1.8; font-size:1rem;">
-                {db_local.get("dashboard", {}).get("text", "Welcome to CRM System. Please login to continue.")}
+                {db_local.get("dashboard", {}).get("text", "Welcome to Reliant Central. Please login to continue.")}
             </p>
         </div>
         ''', unsafe_allow_html=True)
@@ -4637,4 +4637,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
