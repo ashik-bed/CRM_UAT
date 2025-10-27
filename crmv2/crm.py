@@ -77,7 +77,7 @@ def load_data() -> Dict[str, Any]:
         "insurance_entries": [],
         "reliant_best_entries": [],
         "dashboard": {
-            "text": "Welcome to CRM System. Please login to continue.",
+            "text": "Welcome to Reliant Central. Please login to continue.",
             "image_path": None
         },
         "credits_fin_entries": [],
@@ -4637,3 +4637,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
